@@ -34,6 +34,7 @@
   .station img { width:5.5vmin; height:5.5vmin; }
   #clock { position:fixed; top:4vmin; right:5vw; font-size:3.4vmin; color:var(--muted); font-variant-numeric:tabular-nums; }
   audio { display:none; }
+  #status { position:fixed; left:5vw; bottom:4vmin; font-size:2.4vmin; color:var(--muted); opacity:.85; }
   /* Малки екрани (Lenovo Smart Clock, Nest Hub): един под друг, по-едри букви. */
   @media (max-aspect-ratio: 4/3) {
     main { flex-direction:column; justify-content:center; gap:3vh; padding:0 6vw; text-align:center; }
@@ -59,6 +60,7 @@
     <div class="station"><img id="smallLogo" alt=""><span>Радио Alma Mater · 88 MHz · София</span></div>
   </div>
 </main>
+<div id="status"></div>
 <audio id="player"></audio>
 
 <script>
@@ -66,6 +68,7 @@
   'use strict';
   // ---- Настройки (същите като в приложението) ----
   var NOW_PLAYING_URL = 'https://a1.vizitec.com:8001/almamater.xspf';
+  var STREAM_URL = 'https://a1.vizitec.com:8001/almamater';
   var POLL_MS = 10000;
   var STATION = 'Радио Alma Mater';
   var FREQ = '88 MHz · София';
@@ -199,9 +202,66 @@
     var pm = context.getPlayerManager();
     pm.setMediaElement($('player'));
     var E = cast.framework.events.EventType;
-    pm.addEventListener(E.PLAYING, function () { setPlaying(true); });
-    pm.addEventListener([E.PAUSE, E.ENDED, E.ABORT, E.ERROR], function () { setPlaying(false); });
-    pm.addEventListener(E.REQUEST_STOP, function () { setPlaying(false); });
+    var M = cast.framework.messages;
+    var status = function (t) { $('status').textContent = t || ''; };
+    var gotLoad = false;
+    // Командата „пусни“ от телефона: винаги нашият поток и правилният вид (MP3, на живо).
+    pm.setMessageInterceptor(M.MessageType.LOAD, function (req) {
+      gotLoad = true;
+      status('Зарежда…');
+      if (req && req.media) {
+        req.media.contentId = STREAM_URL;
+        req.media.contentUrl = STREAM_URL;
+        req.media.contentType = 'audio/mpeg';
+        req.media.streamType = M.StreamType.LIVE;
+      }
+      if (req) { req.autoplay = true; delete req.currentTime; }
+      watch();
+      return req;
+    });
+    // Ако до 15 секунди не е тръгнало – опитваме пак (до 3 пъти).
+    var tries = 0, timer = null, playingNow = false;
+    function watch() {
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        if (playingNow || tries >= 3) return;
+        tries++;
+        status('Пробвам пак… (' + tries + ')');
+        gotLoad = true;
+        pm.load(makeReq());
+        watch();
+      }, 15000);
+    }
+    pm.addEventListener(E.PLAYING, function () { playingNow = true; tries = 0; clearTimeout(timer); setPlaying(true); status(''); });
+    pm.addEventListener(E.BUFFERING, function (e) { if (e.isBuffering) status('Зарежда…'); });
+    pm.addEventListener([E.PAUSE, E.ENDED, E.ABORT], function () { playingNow = false; setPlaying(false); });
+    pm.addEventListener(E.REQUEST_STOP, function () { clearTimeout(timer); playingNow = false; setPlaying(false); });
+    pm.addEventListener(E.ERROR, function (e) {
+      setPlaying(false);
+      status('Грешка при пускане' + (e && e.detailedErrorCode ? ' (код ' + e.detailedErrorCode + ')' : ''));
+    });
+    // Ако телефонът не е пратил „пусни“ до 6 секунди – пускаме радиото сами.
+    function selfLoad() {
+      if (gotLoad) return;
+      status('Пускам радиото…');
+      gotLoad = true;
+      pm.load(makeReq());
+      watch();
+    }
+    function makeReq() {
+      var req = new M.LoadRequestData();
+      req.autoplay = true;
+      req.media = new M.MediaInformation();
+      req.media.contentId = STREAM_URL;
+      req.media.contentUrl = STREAM_URL;
+      req.media.contentType = 'audio/mpeg';
+      req.media.streamType = M.StreamType.LIVE;
+      var md = new M.MusicTrackMediaMetadata();
+      md.title = STATION; md.artist = FREQ;
+      req.media.metadata = md;
+      return req;
+    }
+    context.addEventListener(cast.framework.system.EventType.READY, function () { setTimeout(selfLoad, 6000); });
     var options = new cast.framework.CastReceiverOptions();
     options.disableIdleTimeout = false;
     context.start(options);
