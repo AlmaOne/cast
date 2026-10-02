@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cast тест – AlmaMaterON</title>
+<style>
+  body { font-family: Arial, sans-serif; background:#1C0D2B; color:#fff; padding:24px; max-width:640px; margin:auto; }
+  h1 { font-size:22px; } p { color:#B9A7CE; line-height:1.5; }
+  google-cast-launcher { display:inline-block; width:48px; height:48px; --connected-color:#10B981; --disconnected-color:#fff; cursor:pointer; vertical-align:middle; }
+  button { font-size:16px; padding:10px 18px; border-radius:10px; border:0; background:#7B3FB3; color:#fff; margin:8px 8px 0 0; cursor:pointer; }
+  #log { margin-top:18px; background:#2B1740; border-radius:10px; padding:12px; font-family:monospace; font-size:13px; white-space:pre-wrap; min-height:120px; }
+</style>
+</head>
+<body>
+<h1>Проба на Cast – AlmaMaterON (233A5E7D)</h1>
+<p>Отвори тази страница в <b>Google Chrome</b> на компютър в същата Wi‑Fi мрежа като телевизора.
+1) Натисни иконата за Cast долу и избери телевизора. 2) Натисни „Пусни радиото“.</p>
+<google-cast-launcher></google-cast-launcher>
+<button id="play">Пусни радиото</button>
+<button id="stop">Спри</button>
+<div id="log"></div>
+
+<script>
+  var STREAM = 'https://a1.vizitec.com:8001/almamater';
+  function log(t) { var el = document.getElementById('log'); el.textContent += new Date().toLocaleTimeString() + '  ' + t + '\n'; }
+  log('Зарежда Cast…');
+  window['__onGCastApiAvailable'] = function (ok) {
+    if (!ok) { log('Cast не е наличен – отвори страницата в Google Chrome.'); return; }
+    var ctx = cast.framework.CastContext.getInstance();
+    ctx.setOptions({ receiverApplicationId: '233A5E7D', autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED });
+    log('Готово. Състояние: ' + ctx.getCastState());
+    ctx.addEventListener(cast.framework.CastContextEventType.CAST_STATE_CHANGED, function (e) { log('Състояние: ' + e.castState); });
+    ctx.addEventListener(cast.framework.CastContextEventType.SESSION_STATE_CHANGED, function (e) {
+      log('Сесия: ' + e.sessionState + (e.errorCode ? ' (грешка ' + e.errorCode + ')' : ''));
+    });
+    document.getElementById('play').onclick = function () {
+      var s = ctx.getCurrentSession();
+      if (!s) { log('Първо се свържи с телевизора от иконата.'); return; }
+      var mi = new chrome.cast.media.MediaInfo(STREAM, 'audio/mpeg');
+      mi.streamType = chrome.cast.media.StreamType.LIVE;
+      var md = new chrome.cast.media.MusicTrackMediaMetadata();
+      md.title = 'Радио Alma Mater'; md.artist = '88 MHz · София';
+      mi.metadata = md;
+      var req = new chrome.cast.media.LoadRequest(mi); req.autoplay = true;
+      s.loadMedia(req).then(function () { log('Пуснато ✓'); }, function (err) { log('Грешка при пускане: ' + err); });
+    };
+    document.getElementById('stop').onclick = function () { var s = ctx.getCurrentSession(); if (s) s.endSession(true); };
+  };
+</script>
+<script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
+</body>
+</html>
