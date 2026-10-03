@@ -15,6 +15,8 @@
   #bg { position:fixed; inset:-8vmin; background-size:cover; background-position:center;
     filter:blur(6vmin) saturate(1.2); opacity:0; transition:opacity 1.2s ease; }
   #bg.on { opacity:.85; }
+  /* Без обложка – размитото лого: меко лилаво сияние (като в приложението). */
+  #bg.on.logo { opacity:.6; }
   #shade { position:fixed; inset:0; background:linear-gradient(90deg, rgba(20,8,32,.82), rgba(20,8,32,.55)); }
   main { position:relative; height:100%; display:flex; align-items:center; gap:6vw; padding:0 7vw; }
   #art { flex:none; width:min(58vh,40vw); height:min(58vh,40vw); border-radius:2.4vmin; object-fit:cover;
@@ -171,7 +173,8 @@
 
   // ---- Показване ----
   var lastKey = null;
-  function show(song, art) {
+  // pending: обложката още се търси – фонът остава стария (без мигане между песните).
+  function show(song, art, pending) {
     $('title').textContent = song ? song.title : STATION;
     $('artist').textContent = song ? (song.artist || STATION) : FREQ;
     var img = $('art');
@@ -179,12 +182,13 @@
       var pre = new Image();
       pre.onload = function () {
         img.src = art; img.classList.remove('logo');
-        $('bg').style.backgroundImage = 'url("' + art + '")'; $('bg').classList.add('on');
+        $('bg').style.backgroundImage = 'url("' + art + '")'; $('bg').classList.remove('logo'); $('bg').classList.add('on');
       };
       pre.src = art;
     } else {
       img.src = LOGO; img.classList.add('logo');
-      $('bg').classList.remove('on');
+      if (pending) return;
+      $('bg').style.backgroundImage = 'url("' + LOGO + '")'; $('bg').classList.add('on', 'logo');
     }
   }
 
@@ -197,8 +201,11 @@
       var key = song ? (song.artist + '|' + song.title).toLowerCase() : '';
       if (key === lastKey) return;
       lastKey = key;
-      show(song, null);
-      if (song) findArtwork(song.artist, song.title).then(function (art) { if (art && key === lastKey) show(song, art); });
+      show(song, null, !!song);
+      if (song) findArtwork(song.artist, song.title).then(function (art) {
+        if (key !== lastKey) return;
+        show(song, art, false); // с обложка – или размитото лого, ако няма
+      });
     }).catch(function () { /* няма връзка – опитваме пак след малко */ });
   }
 
@@ -379,6 +386,7 @@
     // Отворено в обикновен браузър – показваме екрана за преглед (без звук).
     setPlaying(true);
   }
+  show(null, null, false); // начален фон – размитото лого
   startPolling();
 })();
 </script>
