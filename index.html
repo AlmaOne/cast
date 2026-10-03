@@ -366,6 +366,9 @@
       var d = e && e.data;
       if (typeof d === 'string') { try { d = JSON.parse(d); } catch (x) { d = null; } }
       if (!d || d.type !== 'sleep') return;
+      // „Изключи“ точно в края на таймера (часовниците на телефона и телевизора се разминават) – пренебрегваме:
+      // таймерът и без това свършва, нека затихването и спирането да се довършат.
+      if (typeof d.leftMs !== 'number' && sleepUntil && sleepUntil - Date.now() < 3000) return;
       if (sleepUntil && sleepUntil - Date.now() < SLEEP_FADE_MS) status(''); // таймерът е спрян/сменен по време на отброяването
       clearSleep();
       if (typeof d.leftMs === 'number') {
