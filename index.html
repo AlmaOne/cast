@@ -218,8 +218,13 @@
     var M = cast.framework.messages;
     var status = function (t) { $('status').textContent = t || ''; };
     var gotLoad = false;
+    var loadStartedAt = 0; // кога телевизорът сам е започнал да зарежда радиото
     // Командата „пусни“ от телефона: винаги нашият поток и правилният вид (MP3, на живо).
     pm.setMessageInterceptor(M.MessageType.LOAD, function (req) {
+      // Телевизорът вече зарежда / свири радиото – повторно „пусни“ от телефона би започнало
+      // зареждането отначало (и би забавило звука). Пренебрегваме го.
+      var fromPhone = req && req.senderId && req.senderId !== 'local';
+      if (fromPhone && (playingNow || Date.now() - loadStartedAt < 20000)) return null;
       gotLoad = true;
       status('Зарежда…');
       if (req && req.media) {
@@ -241,6 +246,7 @@
         tries++;
         status('Пробвам пак… (' + tries + ')');
         gotLoad = true;
+        loadStartedAt = Date.now();
         pm.load(makeReq());
         watch();
       }, 15000);
@@ -276,6 +282,7 @@
       if (gotLoad) return;
       status('Пускам радиото…');
       gotLoad = true;
+      loadStartedAt = Date.now();
       pm.load(makeReq());
       watch();
     }
