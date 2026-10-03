@@ -324,12 +324,17 @@
         setTimeout(function () { try { context.stop(); } catch (e) {} }, 5000);
         return;
       }
-      if (left < SLEEP_FADE_MS) { try { $('player').volume = Math.max(0.05, left / SLEEP_FADE_MS); } catch (e) {} }
+      if (left < SLEEP_FADE_MS) {
+        try { $('player').volume = Math.max(0.05, left / SLEEP_FADE_MS); } catch (e) {}
+        // Последните 30 секунди – отброяване долу вляво.
+        status('Таймер за заспиване: радиото спира след ' + Math.ceil(left / 1000) + ' сек');
+      }
     }
     context.addCustomMessageListener(NS, function (e) {
       var d = e && e.data;
       if (typeof d === 'string') { try { d = JSON.parse(d); } catch (x) { d = null; } }
       if (!d || d.type !== 'sleep') return;
+      if (sleepUntil && sleepUntil - Date.now() < SLEEP_FADE_MS) status(''); // таймерът е спрян/сменен по време на отброяването
       clearSleep();
       if (typeof d.leftMs === 'number') {
         sleepUntil = Date.now() + Math.max(0, d.leftMs);
