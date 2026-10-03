@@ -149,7 +149,7 @@
     var nA = norm(artist), nT = norm(title), a = norm(rArtist), t = norm(rTrack), first = nA.split(' ')[0] || '';
     var artistOk = !!first && (a.indexOf(first) !== -1 || (!!a && nA.indexOf(a.split(' ')[0]) !== -1));
     var titleOk = !!nT && !!t && (t.indexOf(nT) === 0 || nT.indexOf(t) === 0);
-    var bareOk = !artist && !!nT && (a.indexOf(nT) !== -1 || nT.indexOf(a) !== -1);
+    var bareOk = !artist && !!nT && !!a && (a.indexOf(nT) !== -1 || nT.indexOf(a) !== -1);
     return artistOk || titleOk || bareOk || overlap(artist + ' ' + title, rArtist + ' ' + rTrack) >= 0.6;
   }
   var artCache = {};
@@ -245,10 +245,10 @@
         watch();
       }, 15000);
     }
-    pm.addEventListener(E.PLAYING, function () { playingNow = true; tries = 0; clearTimeout(timer); setPlaying(true); status(''); });
+    pm.addEventListener(E.PLAYING, function () { playingNow = true; tries = 0; clearTimeout(timer); setPlaying(true); status(''); keepAwake(); });
     pm.addEventListener(E.BUFFERING, function (e) { if (e.isBuffering) status('Зарежда…'); });
-    pm.addEventListener([E.PAUSE, E.ENDED, E.ABORT], function () { playingNow = false; setPlaying(false); });
-    pm.addEventListener(E.REQUEST_STOP, function () { clearTimeout(timer); playingNow = false; setPlaying(false); });
+    pm.addEventListener([E.PAUSE, E.ENDED, E.ABORT], function () { playingNow = false; setPlaying(false); releaseAwake(); });
+    pm.addEventListener(E.REQUEST_STOP, function () { clearTimeout(timer); playingNow = false; setPlaying(false); releaseAwake(); });
     pm.addEventListener(E.ERROR, function (e) {
       setPlaying(false);
       status('Грешка при пускане' + (e && e.detailedErrorCode ? ' (код ' + e.detailedErrorCode + ')' : ''));
@@ -263,8 +263,14 @@
         }).catch(function () {});
       } catch (e) {}
     }
-    document.addEventListener('visibilitychange', function () { if (!document.hidden) keepAwake(); });
-    setInterval(keepAwake, 60000);
+    // Спряно радио – пускаме телевизора да си пусне скрийнсейвъра / да заспи.
+    function releaseAwake() {
+      try { $('keep').pause(); } catch (e) {}
+      try { if (lock) { lock.release(); lock = null; } } catch (e) {}
+    }
+    // Будни сме САМО докато реално свири музика.
+    document.addEventListener('visibilitychange', function () { if (!document.hidden && playingNow) keepAwake(); });
+    setInterval(function () { if (playingNow) keepAwake(); }, 60000);
     // Пускаме радиото веднага щом екранът е готов – без да чакаме телефона.
     function selfLoad() {
       if (gotLoad) return;
@@ -286,9 +292,51 @@
       req.media.metadata = md;
       return req;
     }
-    context.addEventListener(cast.framework.system.EventType.READY, function () { selfLoad(); keepAwake(); });
+    context.addEventListener(cast.framework.system.EventType.READY, function () { selfLoad(); });
+    // Таймер за заспиване от телефона: последните 30 секунди звукът затихва, после радиото спира.
+    // Работи тук, на телевизора – дори телефонът да е заключен.
+    var NS = 'urn:x-cast:bg.radioalmamater.app';
+    var SLEEP_FADE_MS = 30000;
+    var sleepUntil = null, sleepTick = null;
+    function clearSleep() {
+      clearInterval(sleepTick); sleepTick = null; sleepUntil = null;
+      try { $('player').volume = 1; } catch (e) {}
+    }
+    function checkSleep() {
+      if (!sleepUntil) return;
+      var left = sleepUntil - Date.now();
+      if (left <= 0) {
+        clearSleep();
+        clearTimeout(timer); tries = 3; // да не се пуска пак само
+        try { pm.stop(); } catch (e) {}
+        setPlaying(false);
+        releaseAwake();
+        status('Таймерът за заспиване спря радиото');
+        // След 5 секунди затваряме нашия екран – Google TV се връща в обичайния си режим
+        // и сам пуска скрийнсейвъра / заспива. Телефонът също разбира, че връзката е приключила.
+        setTimeout(function () { try { context.stop(); } catch (e) {} }, 5000);
+        return;
+      }
+      if (left < SLEEP_FADE_MS) { try { $('player').volume = Math.max(0.05, left / SLEEP_FADE_MS); } catch (e) {} }
+    }
+    context.addCustomMessageListener(NS, function (e) {
+      var d = e && e.data;
+      if (typeof d === 'string') { try { d = JSON.parse(d); } catch (x) { d = null; } }
+      if (!d || d.type !== 'sleep') return;
+      clearSleep();
+      if (typeof d.leftMs === 'number') {
+        sleepUntil = Date.now() + Math.max(0, d.leftMs);
+        sleepTick = setInterval(checkSleep, 1000);
+        checkSleep();
+      }
+    });
+    // Нов старт от телефона след таймера – пълен звук и нормален надпис.
+    pm.addEventListener(E.PLAYING, function () { tries = 0; if (!sleepUntil) { try { $('player').volume = 1; } catch (e) {} } });
+
     var options = new cast.framework.CastReceiverOptions();
     options.disableIdleTimeout = false;
+    options.customNamespaces = {};
+    options.customNamespaces[NS] = cast.framework.system.MessageType.JSON;
     context.start(options);
   } else {
     // Отворено в обикновен браузър – показваме екрана за преглед (без звук).
