@@ -305,31 +305,56 @@
     var NS = 'urn:x-cast:bg.radioalmamater.app';
     var SLEEP_FADE_MS = 30000;
     var sleepUntil = null, sleepTick = null;
-    function clearSleep() {
-      clearInterval(sleepTick); sleepTick = null; sleepUntil = null;
+    // Затихване. Звукът на самия плейър Chromecast често не го слуша, затова намаляваме
+    // и звука на устройството – и после го връщаме точно както е бил.
+    var origVol = null;
+    function fadeTo(k) {
+      try { $('player').volume = k; } catch (e) {}
+      try {
+        if (origVol == null) {
+          var v = context.getSystemVolume();
+          origVol = v && typeof v.level === 'number' ? v.level : null;
+        }
+        if (origVol != null) context.setSystemVolumeLevel(Math.max(0.01, origVol * k));
+      } catch (e) {}
+    }
+    function restoreVol() {
       try { $('player').volume = 1; } catch (e) {}
+      if (origVol != null) {
+        try { context.setSystemVolumeLevel(origVol); } catch (e) {}
+        origVol = null;
+      }
+    }
+    function clearSleep(keepVolume) {
+      clearInterval(sleepTick); sleepTick = null; sleepUntil = null;
+      if (!keepVolume) restoreVol();
     }
     function checkSleep() {
       if (!sleepUntil) return;
       var left = sleepUntil - Date.now();
       if (left <= 0) {
-        clearSleep();
+        clearSleep(true); // звукът остава тих, докато радиото спре
         clearTimeout(timer); tries = 3; // да не се пуска пак само
         try { pm.stop(); } catch (e) {}
+        // Връщаме звука на устройството чак след като радиото е спряло (без „гръмване“).
+        setTimeout(restoreVol, 1500);
         setPlaying(false);
         releaseAwake();
         status('Таймерът за заспиване спря радиото');
         // След 5 секунди затваряме нашия екран – Google TV се връща в обичайния си режим
         // и сам пуска скрийнсейвъра / заспива. Телефонът също разбира, че връзката е приключила.
-        setTimeout(function () { try { context.stop(); } catch (e) {} }, 5000);
+        setTimeout(function () { restoreVol(); try { context.stop(); } catch (e) {} }, 5000);
         return;
       }
       if (left < SLEEP_FADE_MS) {
-        try { $('player').volume = Math.max(0.05, left / SLEEP_FADE_MS); } catch (e) {}
+        fadeTo(Math.max(0.05, left / SLEEP_FADE_MS));
         // Последните 30 секунди – отброяване долу вляво.
         status('Таймер за заспиване: радиото спира след ' + Math.ceil(left / 1000) + ' сек');
       }
     }
+    // Екранът се затваря (напр. телефонът прекъсна връзката) – звукът на устройството да не остане тих.
+    context.addEventListener(cast.framework.system.EventType.SHUTDOWN, function () { restoreVol(); });
+    context.addEventListener(cast.framework.system.EventType.SENDER_DISCONNECTED, function () { if (!sleepUntil) restoreVol(); });
     context.addCustomMessageListener(NS, function (e) {
       var d = e && e.data;
       if (typeof d === 'string') { try { d = JSON.parse(d); } catch (x) { d = null; } }
