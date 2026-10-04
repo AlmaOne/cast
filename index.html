@@ -418,7 +418,7 @@
         req.media.contentId = STREAM_URL;
         req.media.contentUrl = STREAM_URL;
         req.media.contentType = 'audio/aac'; // потокът е AAC 160 kbps (с „audio/mpeg“ Chromecast тръгваше след ~27 сек)
-        req.media.streamType = M.StreamType.BUFFERED; // с LIVE Chromecast чакаше „края на живото“ – безкрайно
+        req.media.streamType = M.StreamType.LIVE;
       }
       if (req) { req.autoplay = true; delete req.currentTime; }
       watch();
@@ -504,13 +504,14 @@
       req.media.contentId = STREAM_URL;
       req.media.contentUrl = STREAM_URL;
       req.media.contentType = 'audio/aac'; // потокът е AAC 160 kbps (с „audio/mpeg“ Chromecast тръгваше след ~27 сек)
-      req.media.streamType = M.StreamType.BUFFERED;
+      req.media.streamType = M.StreamType.LIVE;
       var md = new M.MusicTrackMediaMetadata();
       md.title = STATION; md.artist = FREQ;
       req.media.metadata = md;
       return req;
     }
-    context.addEventListener(cast.framework.system.EventType.READY, function () { selfLoad(); });
+    // На 0,7 сек първото пускане засядаше (Google TV още не е готов за звук) – изчакваме 3 сек.
+    context.addEventListener(cast.framework.system.EventType.READY, function () { setTimeout(selfLoad, 3000); });
     // ---- ВРЕМЕННА ДИАГНОСТИКА: след колко секунди става всяка стъпка (първата минута, долу вляво) ----
     var diagT0 = performance.now(), diagLog = [], diagOn = true; window.__diagOn = true;
     function diag(name) {
