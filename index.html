@@ -137,10 +137,18 @@
       return r.text();
     }).finally(function () { clearTimeout(timer); });
   }
+  // Обложки – същото търсене като в приложението (src/nowPlaying.ts → findArtwork).
+  // Българска кирилица → латиница: iTunes често пише българските имена на латиница.
+  var TRANSLIT = { 'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l',
+    'м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch',
+    'ш':'sh','щ':'sht','ъ':'a','ь':'y','ю':'yu','я':'ya','ё':'yo','ы':'y','э':'e' };
+  function translit(x) { return x.toLowerCase().replace(/[а-яё]/g, function (c) { return TRANSLIT[c] || c; }); }
+  function hasCyrillic(x) { return /[а-яё]/i.test(x); }
+  // Без ударения, кирилицата на латиница, „ts“→„c“ и „y“→„i“ („Елица“ = Elitsa, „Щурците“ = Shturcite).
   function norm(x) {
     var s = x.toLowerCase();
     try { s = s.normalize('NFKD').replace(/[̀-ͯ]/g, ''); } catch (e) {}
-    return s.replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    return translit(s).replace(/ts/g, 'c').replace(/y/g, 'i').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   }
   function words(x) { return norm(x).split(' ').filter(function (w) { return w.length > 1; }); }
   function overlap(q, r) {
@@ -148,28 +156,49 @@
     var rs = new Set(words(r));
     return qa.filter(function (w) { return rs.has(w); }).length / qa.length;
   }
-  function isGoodMatch(artist, title, rArtist, rTrack) {
-    var nA = norm(artist), nT = norm(title), a = norm(rArtist), t = norm(rTrack), first = nA.split(' ')[0] || '';
+  // 2 – същата песен (или изпълнителят, ако имаме само име), 1 – същият изпълнител, друга песен, 0 – не.
+  function matchScore(artist, title, rArtist, rTrack) {
+    var nT = norm(title), a = norm(rArtist);
+    if (!artist) return (!!nT && !!a && (a.indexOf(nT) !== -1 || nT.indexOf(a) !== -1)) ? 2 : 0;
+    var nA = norm(artist), first = nA.split(' ')[0] || '';
     var artistOk = !!first && (a.indexOf(first) !== -1 || (!!a && nA.indexOf(a.split(' ')[0]) !== -1));
-    var titleOk = !!nT && !!t && (t.indexOf(nT) === 0 || nT.indexOf(t) === 0);
-    var bareOk = !artist && !!nT && !!a && (a.indexOf(nT) !== -1 || nT.indexOf(a) !== -1);
-    return artistOk || titleOk || bareOk || overlap(artist + ' ' + title, rArtist + ' ' + rTrack) >= 0.6;
+    if (!artistOk) return 0;
+    var t = norm(rTrack);
+    var titleOk = !!nT && !!t && (t.indexOf(nT) === 0 || nT.indexOf(t) === 0 || overlap(title, rTrack) >= 0.6);
+    return titleOk ? 2 : 1;
   }
   var artCache = {};
+  // Опити: американският магазин → българският → на латиница → само заглавието → само изпълнителя.
+  // Спира при същата песен; ако такава няма – обложка от същия изпълнител.
   function findArtwork(artist, title) {
     var key = (artist + '|' + title).toLowerCase();
     if (key in artCache) return Promise.resolve(artCache[key]);
-    var q = encodeURIComponent((artist + ' ' + title).trim());
-    return fetchText('https://itunes.apple.com/search?term=' + q + '&media=music&entity=song&limit=10')
-      .then(function (txt) {
-        var res = (JSON.parse(txt).results || []).filter(function (r) {
-          return isGoodMatch(artist, title, r.artistName || '', r.trackName || '');
-        })[0];
+    var full = (artist + ' ' + title).trim();
+    var tries = [[full, 'us'], [full, 'bg']];
+    if (hasCyrillic(full)) tries.push([translit(full), 'bg']);
+    if (artist && title) { tries.push([title, 'bg']); tries.push([artist, 'bg']); }
+    var fallback = null;
+    function attempt(i) {
+      if (i >= tries.length) return Promise.resolve(fallback);
+      var url = 'https://itunes.apple.com/search?term=' + encodeURIComponent(tries[i][0]) +
+        '&media=music&entity=song&limit=10&country=' + tries[i][1];
+      return fetchText(url).then(function (txt) {
+        var best = null, bestScore = 0;
+        (JSON.parse(txt).results || []).forEach(function (r) {
+          var sc = matchScore(artist, title, r.artistName || '', r.trackName || '');
+          if (sc > bestScore && r.artworkUrl100) { best = r; bestScore = sc; }
+        });
         // Голяма обложка за телевизора.
-        var url = res && res.artworkUrl100 ? res.artworkUrl100.replace('100x100bb', '1000x1000bb') : null;
-        artCache[key] = url;
-        return url;
-      }).catch(function () { return null; });
+        var big = best ? best.artworkUrl100.replace('100x100bb', '1000x1000bb') : null;
+        if (bestScore === 2) return big;
+        if (big && !fallback) fallback = big;
+        return attempt(i + 1);
+      });
+    }
+    return attempt(0).then(function (url) {
+      artCache[key] = url;
+      return url;
+    }).catch(function () { return null; });
   }
 
   // ---- Показване ----
