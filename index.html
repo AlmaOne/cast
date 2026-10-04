@@ -202,9 +202,13 @@
     })(i);
     return 90 * text.length + 1300; // приблизително колко трае
   }
-  // Ред по ред: „НА ЖИВО“ → заглавието → изпълнителя / „88 MHz · София“.
+  // Ред по ред: „НА ЖИВО“ → заглавието → „88 MHz · София“.
+  // Заглавието и изпълнителят се превъртат САМО при дълго предаване (без песен над 10 мин, логото на екрана).
+  // Докато върви песен – името ѝ и изпълнителят не се пипат.
+  function longTalk() { return !lastKey && Date.now() - lastSongChange > 10 * 60000 && $('art').classList.contains('logo'); }
   function rollRows() {
     var t1 = flapText($('liveText'), function () { return $('main').classList.contains('paused') ? 'СПРЯНО' : 'НА ЖИВО'; }) || 0;
+    if (!longTalk()) return;
     setTimeout(function () {
       var t2 = flapText($('title')) || 0;
       setTimeout(function () { flapText($('artist')); }, t2);
@@ -386,7 +390,7 @@
     return attempt(0).then(function (url) {
       artCache[key] = url;
       return url;
-    }).catch(function () { return null; });
+    }).catch(function () { return undefined; }); // undefined = търсенето не успя (мрежа/iTunes отказа), null = няма обложка
   }
 
   // ---- Показване ----
@@ -424,10 +428,14 @@
       if (logoLight) { logoLight = false; if ($('art').classList.contains('logo')) $('art').src = LOGO; }
       flashStation(!!song);
       show(song, null, !!song);
-      if (song) findArtwork(song.artist, song.title).then(function (art) {
-        if (key !== lastKey) return;
-        show(song, art, false); // с обложка – или размитото лого, ако няма
-      });
+      if (song) (function tryArt(left) {
+        findArtwork(song.artist, song.title).then(function (art) {
+          if (key !== lastKey) return;
+          // Търсенето не успя (напр. iTunes временно отказва при много заявки) – пробваме пак след 30 сек, до 3 пъти.
+          if (art === undefined && left > 0) { setTimeout(function () { if (key === lastKey) tryArt(left - 1); }, 30000); return; }
+          show(song, art || null, false); // с обложка – или размитото лого, ако няма
+        });
+      })(3);
     }).catch(function () { /* няма връзка – опитваме пак след малко */ });
   }
 
@@ -565,7 +573,7 @@
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
     setTimeout(function () { diagOn = false; window.__diagOn = false; $('status').textContent = ''; }, 90000);
-    diag('v12');
+    diag('v14');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
