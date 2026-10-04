@@ -510,8 +510,7 @@
       req.media.metadata = md;
       return req;
     }
-    // На 0,7 сек първото пускане засядаше (Google TV още не е готов за звук) – изчакваме 3 сек.
-    context.addEventListener(cast.framework.system.EventType.READY, function () { setTimeout(selfLoad, 3000); });
+    context.addEventListener(cast.framework.system.EventType.READY, function () { selfLoad(); });
     // ---- ВРЕМЕННА ДИАГНОСТИКА: след колко секунди става всяка стъпка (първата минута, долу вляво) ----
     var diagT0 = performance.now(), diagLog = [], diagOn = true; window.__diagOn = true;
     function diag(name) {
@@ -522,7 +521,7 @@
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
     setTimeout(function () { diagOn = false; window.__diagOn = false; $('status').textContent = ''; }, 90000);
-    diag('страница');
+    diag('v9 страница');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
@@ -616,7 +615,16 @@
     setPlaying(true);
   }
   show(null, null, false); // начален фон – размитото лого
-  startPolling();
+  // Песента и обложката – чак когато звукът тръгне: заявката за песента е към същия сървър
+  // като звука и го задържаше (звукът тръгваше точно 8 сек след като я прекъснехме).
+  // Резервно – след 30 сек, ако по някаква причина не свири.
+  if (window.cast && cast.framework) {
+    cast.framework.CastReceiverContext.getInstance().getPlayerManager()
+      .addEventListener(cast.framework.events.EventType.PLAYING, function () { startPolling(); });
+    setTimeout(startPolling, 30000);
+  } else {
+    startPolling();
+  }
 })();
 </script>
 </body>
