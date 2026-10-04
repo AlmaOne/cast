@@ -402,7 +402,7 @@
     pm.setMediaElement($('player'));
     var E = cast.framework.events.EventType;
     var M = cast.framework.messages;
-    var status = function (t) { $('status').textContent = t || ''; };
+    var status = function (t) { if (window.__diagOn) return; $('status').textContent = t || ''; }; // докато тече диагностиката – не я затриваме
     var gotLoad = false;
     var loadStartedAt = 0; // кога телевизорът сам е започнал да зарежда радиото
     // Командата „пусни“ от телефона: винаги нашият поток и правилният вид (MP3, на живо).
@@ -410,13 +410,14 @@
       // Телевизорът вече зарежда / свири радиото – повторно „пусни“ от телефона би започнало
       // зареждането отначало (и би забавило звука). Пренебрегваме го.
       var fromPhone = req && req.senderId && req.senderId !== 'local';
+      if (fromPhone && typeof diag === 'function') diag((playingNow || Date.now() - loadStartedAt < 20000) ? 'тел. (пропуснат)' : 'тел. пуска');
       if (fromPhone && (playingNow || Date.now() - loadStartedAt < 20000)) return null;
       gotLoad = true;
       status('Зарежда…');
       if (req && req.media) {
         req.media.contentId = STREAM_URL;
         req.media.contentUrl = STREAM_URL;
-        req.media.contentType = 'audio/mpeg';
+        req.media.contentType = 'audio/aac'; // потокът е AAC 160 kbps (с „audio/mpeg“ Chromecast тръгваше след ~27 сек)
         req.media.streamType = M.StreamType.LIVE;
       }
       if (req) { req.autoplay = true; delete req.currentTime; }
@@ -469,6 +470,7 @@
       status('Пускам радиото…');
       gotLoad = true;
       loadStartedAt = Date.now();
+      if (typeof diag === 'function') diag('сам пуска');
       pm.load(makeReq());
       watch();
     }
@@ -478,7 +480,7 @@
       req.media = new M.MediaInformation();
       req.media.contentId = STREAM_URL;
       req.media.contentUrl = STREAM_URL;
-      req.media.contentType = 'audio/mpeg';
+      req.media.contentType = 'audio/aac'; // потокът е AAC 160 kbps (с „audio/mpeg“ Chromecast тръгваше след ~27 сек)
       req.media.streamType = M.StreamType.LIVE;
       var md = new M.MusicTrackMediaMetadata();
       md.title = STATION; md.artist = FREQ;
@@ -486,6 +488,27 @@
       return req;
     }
     context.addEventListener(cast.framework.system.EventType.READY, function () { selfLoad(); });
+    // ---- ВРЕМЕННА ДИАГНОСТИКА: след колко секунди става всяка стъпка (първата минута, долу вляво) ----
+    var diagT0 = performance.now(), diagLog = [], diagOn = true; window.__diagOn = true;
+    function diag(name) {
+      if (!diagOn) return;
+      var t = ((performance.now() - diagT0) / 1000).toFixed(1);
+      if (diagLog.length && diagLog[diagLog.length - 1].slice(-name.length) === name) return;
+      diagLog.push(t + ' ' + name);
+      $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
+    }
+    setTimeout(function () { diagOn = false; window.__diagOn = false; $('status').textContent = ''; }, 90000);
+    diag('страница');
+    context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
+    try { (function () {
+      var a = $('player');
+      [['loadstart', 'връзка'], ['loadedmetadata', 'формат'], ['progress', 'данни'], ['waiting', 'чака'],
+       ['stalled', 'засечка'], ['canplay', 'готово'], ['playing', 'свири'], ['error', 'грешка']].forEach(function (p) {
+        a.addEventListener(p[0], function () { diag(p[1]); });
+      });
+      pm.addEventListener(E.BUFFERING, function (e) { diag(e.isBuffering ? 'буфер+' : 'буфер−'); });
+      pm.addEventListener(E.PLAYER_LOAD_COMPLETE, function () { diag('зареден'); });
+    })(); } catch (e) {} // диагностиката никога не бива да пречи на звука
     // Таймер за заспиване от телефона: последните 30 секунди звукът затихва, после радиото спира.
     // Работи тук, на телевизора – дори телефонът да е заключен.
     var NS = 'urn:x-cast:bg.radioalmamater.app';
