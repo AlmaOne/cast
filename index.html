@@ -331,13 +331,18 @@
   function norm(x) {
     var s = x.toLowerCase();
     try { s = s.normalize('NFKD').replace(/[̀-ͯ]/g, ''); } catch (e) {}
-    return translit(s).replace(/ts/g, 'c').replace(/y/g, 'i').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    return translit(s).replace(/ts/g, 'c').replace(/y/g, 'i').replace(/(\p{L})\1+/gu, '$1') // двойните букви като една
+      .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   }
   function words(x) { return norm(x).split(' ').filter(function (w) { return w.length > 1; }); }
   function overlap(q, r) {
     var qa = words(q); if (!qa.length) return 0;
     var rs = new Set(words(r));
     return qa.filter(function (w) { return rs.has(w); }).length / qa.length;
+  }
+  // Името без свързващите думи („и“, „e“, „and“, „the“…).
+  function bareName(x) {
+    return norm(x).split(' ').filter(function (w) { return w && ['e', 'i', 'and', 'the', 'et', 'und', 'y'].indexOf(w) === -1; }).join(' ');
   }
   // Отделните имена в „А & Б“, „А, Б“, „А feat. Б“, „А и Б“.
   function people(x) {
@@ -350,7 +355,8 @@
     // Изпълнителят съвпада само като цяло име („Мариус“ ≠ „Marius de Vries“, но „KOOL“ = „Kool & The Gang“).
     var nA = norm(artist), ours = people(artist), theirs = people(rArtist);
     var artistOk = ours.some(function (o) { return o === a || theirs.indexOf(o) !== -1; }) ||
-      theirs.some(function (t) { return t === nA; });
+      theirs.some(function (t) { return t === nA; }) ||
+      (!!bareName(artist) && bareName(artist) === bareName(rArtist)); // „Ricchi E Poveri“ = „Ricchi & Poveri“
     if (!artistOk) return 0;
     var t = norm(rTrack);
     var titleOk = !!nT && !!t && (t.indexOf(nT) === 0 || nT.indexOf(t) === 0 || overlap(title, rTrack) >= 0.6);
@@ -578,7 +584,7 @@
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
     setTimeout(function () { diagOn = false; window.__diagOn = false; $('status').textContent = ''; }, 90000);
-    diag('v15');
+    diag('v16');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
