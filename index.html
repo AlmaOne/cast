@@ -418,7 +418,7 @@
         req.media.contentId = STREAM_URL;
         req.media.contentUrl = STREAM_URL;
         req.media.contentType = 'audio/aac'; // потокът е AAC 160 kbps (с „audio/mpeg“ Chromecast тръгваше след ~27 сек)
-        req.media.streamType = M.StreamType.LIVE;
+        req.media.streamType = M.StreamType.BUFFERED; // с LIVE Chromecast чакаше „края на живото“ – безкрайно
       }
       if (req) { req.autoplay = true; delete req.currentTime; }
       watch();
@@ -443,7 +443,23 @@
       }, 40000);
     }
     pm.addEventListener(E.PLAYING, function () { playingNow = true; tries = 0; clearTimeout(timer); setPlaying(true); status(''); keepAwake(); });
-    pm.addEventListener(E.BUFFERING, function (e) { buffering = !!e.isBuffering; if (e.isBuffering) status('Зарежда…'); });
+    var stallTimer = null;
+    pm.addEventListener(E.BUFFERING, function (e) {
+      buffering = !!e.isBuffering;
+      clearTimeout(stallTimer);
+      if (e.isBuffering) {
+        status('Зарежда…');
+        // Ако трупа повече от 8 сек и още не свири – засякло е: пускаме наново (до 3 пъти).
+        stallTimer = setTimeout(function () {
+          if (playingNow || tries >= 3) return;
+          tries++;
+          if (typeof diag === 'function') diag('нов опит ' + tries);
+          gotLoad = true; loadStartedAt = Date.now();
+          pm.load(makeReq());
+        }, 8000);
+      }
+    });
+    pm.addEventListener(E.PLAYING, function () { clearTimeout(stallTimer); });
     pm.addEventListener([E.PAUSE, E.ENDED, E.ABORT], function () { playingNow = false; setPlaying(false); releaseAwake(); });
     pm.addEventListener(E.REQUEST_STOP, function () { clearTimeout(timer); playingNow = false; setPlaying(false); releaseAwake(); });
     pm.addEventListener(E.ERROR, function (e) {
@@ -488,7 +504,7 @@
       req.media.contentId = STREAM_URL;
       req.media.contentUrl = STREAM_URL;
       req.media.contentType = 'audio/aac'; // потокът е AAC 160 kbps (с „audio/mpeg“ Chromecast тръгваше след ~27 сек)
-      req.media.streamType = M.StreamType.LIVE;
+      req.media.streamType = M.StreamType.BUFFERED;
       var md = new M.MusicTrackMediaMetadata();
       md.title = STATION; md.artist = FREQ;
       req.media.metadata = md;
@@ -591,13 +607,6 @@
 
     var options = new cast.framework.CastReceiverOptions();
     options.disableIdleTimeout = false;
-    // Тръгваме, щом има 1 сек звук (по подразбиране Chromecast чака да натрупа повече).
-    try {
-      var pc = new cast.framework.PlaybackConfig();
-      pc.autoResumeDuration = 1;
-      pc.autoResumeNumberOfSegments = 1;
-      options.playbackConfig = pc;
-    } catch (e) {}
     options.customNamespaces = {};
     options.customNamespaces[NS] = cast.framework.system.MessageType.JSON;
     context.start(options);
