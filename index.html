@@ -186,7 +186,10 @@
         var best = null, bestScore = 0;
         (JSON.parse(txt).results || []).forEach(function (r) {
           var sc = matchScore(artist, title, r.artistName || '', r.trackName || '');
-          if (sc > bestScore && r.artworkUrl100) { best = r; bestScore = sc; }
+          if (!sc || !r.artworkUrl100) return;
+          // При равенство – албумът с най-малък номер: телефонът и телевизорът избират една и съща обложка.
+          var id = Number(r.collectionId) || Infinity, bestId = best ? (Number(best.collectionId) || Infinity) : Infinity;
+          if (sc > bestScore || (sc === bestScore && id < bestId)) { best = r; bestScore = sc; }
         });
         // Голяма обложка за телевизора.
         var big = best ? best.artworkUrl100.replace('100x100bb', '1000x1000bb') : null;
