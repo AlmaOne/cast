@@ -26,6 +26,8 @@
   .info { min-width:0; flex:1; }
   .live { display:flex; align-items:center; gap:1.2vmin; font-size:2.6vmin; font-weight:700;
     letter-spacing:.5vmin; color:var(--hl); }
+  /* Надписът е малко по-блед (по-малко запичане); точката остава ярка. */
+  .live .lt { opacity:.7; }
   .dot { width:1.6vmin; height:1.6vmin; border-radius:50%; background:#ef4444; animation:pulse 2s infinite; }
   .paused .dot { background:var(--muted); animation:none; }
   @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.35 } }
@@ -37,21 +39,17 @@
     transition:opacity .3s ease; white-space:nowrap; }
   /* Редът с „+“ и името се показва за малко при нова песен, после изчезва (против запичане). */
   .station.off { opacity:0; transition:opacity 2s ease; }
-  /* Буквите „пристигат“ като на табло на гара – всяка на своя плочка. */
+  /* Буквите „пристигат“ като на табло на гара (без плочки – само буквите). */
   #stationText { display:flex; }
-  #stationText .ch { display:inline-block; position:relative; min-width:.75em; padding:0 .12em; margin-right:.08em;
-    text-align:center; background:#2A1A3C; border-radius:.12em; color:#E9DEF3; }
-  #stationText .ch::after { content:""; position:absolute; left:0; right:0; top:50%; height:1px; background:rgba(0,0,0,.5); }
-  #stationText .ch.sp { background:transparent; min-width:.4em; }
-  #stationText .ch.sp::after { display:none; }
+  #stationText .ch { display:inline-block; min-width:.32em; text-align:center; }
   .station img { width:5.5vmin; height:5.5vmin; }
   /* Часовник като таблата на старите гари. Мести се между три ъгъла (долу вляво са известията). */
   #clock { position:fixed; display:flex; gap:.12em; align-items:center; font-size:3.6vmin; opacity:.75; transition:opacity 1.2s ease; }
   #clock.hide { opacity:0; }
   #clock.pos0 { top:4vmin; right:5vw; } #clock.pos1 { bottom:4vmin; right:5vw; } #clock.pos2 { top:4vmin; left:5vw; }
   .colon { width:.3em; display:flex; flex-direction:column; gap:.28em; align-items:center; }
-  .colon i { width:.13em; height:.13em; border-radius:50%; background:var(--muted); }
-  .fd { position:relative; width:.95em; height:1.35em; perspective:3em; font-weight:700; color:#E9DEF3; font-variant-numeric:tabular-nums; }
+  .colon i { width:.13em; height:.13em; border-radius:50%; background:var(--hl); }
+  .fd { position:relative; width:.95em; height:1.35em; perspective:3em; font-weight:700; color:var(--hl); font-variant-numeric:tabular-nums; }
   .fd .h { position:absolute; left:0; width:100%; height:50%; overflow:hidden; text-align:center; }
   .fd .h span { display:block; height:1.35em; line-height:1.35em; }
   .fd .t { top:0; border-radius:.12em .12em 0 0; background:#2A1A3C; }
@@ -90,7 +88,7 @@
 <main id="main" class="paused">
   <img id="art" class="logo" alt="">
   <div class="info">
-    <div class="live"><span class="dot"></span><span id="liveText">НА ЖИВО</span></div>
+    <div class="live"><span class="dot"></span><span id="liveText" class="lt">НА ЖИВО</span></div>
     <div id="title">Радио Alma Mater</div>
     <div id="artist">88 MHz · София</div>
     <div class="station off" id="station"><img id="smallLogo" alt=""><span id="stationText">Радио Alma Mater · 88 MHz · София</span></div>
@@ -153,10 +151,36 @@
   function rollClock() {
     if (rolling) return;
     rolling = true;
+    rollLive();
     var step = 0, iv = setInterval(function () {
       for (var i = 0; i < 4; i++) flipTo(digits[i], String((+digits[i]._v + 1) % 10));
       if (++step >= 10) { clearInterval(iv); setTimeout(function () { rolling = false; tickClock(); }, 500); }
     }, 500);
+  }
+  // „НА ЖИВО“ (или „СПРЯНО“) – буквите се превъртат като на табло и спират на мястото си.
+  function rollLive() {
+    var el = $('liveText'), text = el.textContent, POOL = 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЮЯ';
+    el.innerHTML = '';
+    var spans = [], done = 0, letters = 0;
+    for (var i = 0; i < text.length; i++) (function (i) {
+      var t = text[i], sp = document.createElement('span');
+      sp.style.display = 'inline-block'; sp.style.minWidth = '.75em'; sp.style.textAlign = 'center';
+      sp.textContent = t === ' ' ? '\u00a0' : t; el.appendChild(sp); spans.push(sp);
+      if (t === ' ') return;
+      letters++;
+      var n = 0, flips = 10 + Math.floor(Math.random() * 7);
+      setTimeout(function () {
+        var iv = setInterval(function () {
+          if (++n >= flips) {
+            sp.textContent = t; clearInterval(iv);
+            // накрая – обратно на обикновен текст (и вярното състояние, ако междувременно е спряло/пуснато)
+            if (++done === letters) el.textContent = $('main').classList.contains('paused') ? 'СПРЯНО' : 'НА ЖИВО';
+            return;
+          }
+          sp.textContent = POOL[Math.floor(Math.random() * POOL.length)];
+        }, 75);
+      }, i * 90);
+    })(i);
   }
   function moveClock() {
     var c = $('clock');
@@ -186,16 +210,16 @@
   var stationTimer = null, flapTimers = [];
   var STATION_LINE = STATION + ' · ' + FREQ;
   var FLAP_POOL = 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЮЯABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  // Буквите се появяват отляво надясно; всяка прехвърля 10–16 знака и спира на мястото си (~4 сек общо).
+  // Буквите се появяват отляво надясно; всяка прехвърля 8–13 знака и спира на мястото си (~3 сек общо).
   function arriveStation() {
     flapTimers.forEach(function (t) { clearTimeout(t); clearInterval(t); }); flapTimers = [];
     var box = $('stationText'); box.innerHTML = '';
     for (var i = 0; i < STATION_LINE.length; i++) (function (i) {
       var target = STATION_LINE[i], ch = document.createElement('span');
-      ch.className = 'ch' + (target === ' ' ? ' sp' : '');
+      ch.className = 'ch';
       ch.textContent = '\u00a0'; box.appendChild(ch);
       if (target === ' ') return;
-      var flips = 10 + Math.floor(Math.random() * 7), n = 0;
+      var flips = 8 + Math.floor(Math.random() * 6), n = 0;
       flapTimers.push(setTimeout(function () {
         var iv = setInterval(function () {
           if (++n >= flips) { ch.textContent = target; clearInterval(iv); return; }
@@ -203,7 +227,7 @@
             ? String(Math.floor(Math.random() * 10)) : FLAP_POOL[Math.floor(Math.random() * FLAP_POOL.length)];
         }, 75);
         flapTimers.push(iv);
-      }, i * 90));
+      }, i * 60));
     })(i);
   }
   function flashStation(on) {
