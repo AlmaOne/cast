@@ -34,9 +34,16 @@
   #artist { font-size:4.4vmin; color:var(--muted); margin-top:1.6vmin;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .station { margin-top:6vmin; font-size:2.8vmin; color:var(--muted); display:flex; align-items:center; gap:1.6vmin;
-    transition:opacity 2s ease; }
+    transition:opacity .3s ease; white-space:nowrap; }
   /* Редът с „+“ и името се показва за малко при нова песен, после изчезва (против запичане). */
-  .station.off { opacity:0; }
+  .station.off { opacity:0; transition:opacity 2s ease; }
+  /* Буквите „пристигат“ като на табло на гара – всяка на своя плочка. */
+  #stationText { display:flex; }
+  #stationText .ch { display:inline-block; position:relative; min-width:.75em; padding:0 .12em; margin-right:.08em;
+    text-align:center; background:#2A1A3C; border-radius:.12em; color:#E9DEF3; }
+  #stationText .ch::after { content:""; position:absolute; left:0; right:0; top:50%; height:1px; background:rgba(0,0,0,.5); }
+  #stationText .ch.sp { background:transparent; min-width:.4em; }
+  #stationText .ch.sp::after { display:none; }
   .station img { width:5.5vmin; height:5.5vmin; }
   /* Часовник като таблата на старите гари. Мести се между три ъгъла (долу вляво са известията). */
   #clock { position:fixed; display:flex; gap:.12em; align-items:center; font-size:3.6vmin; opacity:.75; transition:opacity 1.2s ease; }
@@ -86,7 +93,7 @@
     <div class="live"><span class="dot"></span><span id="liveText">НА ЖИВО</span></div>
     <div id="title">Радио Alma Mater</div>
     <div id="artist">88 MHz · София</div>
-    <div class="station off" id="station"><img id="smallLogo" alt=""><span>Радио Alma Mater · 88 MHz · София</span></div>
+    <div class="station off" id="station"><img id="smallLogo" alt=""><span id="stationText">Радио Alma Mater · 88 MHz · София</span></div>
   </div>
 </main>
 <div id="status"></div>
@@ -176,11 +183,36 @@
 
   // Редът „+ Радио Alma Mater · 88 MHz · София“ – 20 сек при нова песен, после изчезва.
   // Без песен заглавието и без това е „Радио Alma Mater“ – редът не се показва. „НА ЖИВО“ остава винаги.
-  var stationTimer = null;
+  var stationTimer = null, flapTimers = [];
+  var STATION_LINE = STATION + ' · ' + FREQ;
+  var FLAP_POOL = 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЮЯABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  // Буквите се появяват отляво надясно; всяка прехвърля 10–16 знака и спира на мястото си (~4 сек общо).
+  function arriveStation() {
+    flapTimers.forEach(function (t) { clearTimeout(t); clearInterval(t); }); flapTimers = [];
+    var box = $('stationText'); box.innerHTML = '';
+    for (var i = 0; i < STATION_LINE.length; i++) (function (i) {
+      var target = STATION_LINE[i], ch = document.createElement('span');
+      ch.className = 'ch' + (target === ' ' ? ' sp' : '');
+      ch.textContent = '\u00a0'; box.appendChild(ch);
+      if (target === ' ') return;
+      var flips = 10 + Math.floor(Math.random() * 7), n = 0;
+      flapTimers.push(setTimeout(function () {
+        var iv = setInterval(function () {
+          if (++n >= flips) { ch.textContent = target; clearInterval(iv); return; }
+          ch.textContent = target === '·' ? '·' : /[0-9]/.test(target)
+            ? String(Math.floor(Math.random() * 10)) : FLAP_POOL[Math.floor(Math.random() * FLAP_POOL.length)];
+        }, 75);
+        flapTimers.push(iv);
+      }, i * 90));
+    })(i);
+  }
   function flashStation(on) {
     clearTimeout(stationTimer);
     $('station').classList.toggle('off', !on);
-    if (on) stationTimer = setTimeout(function () { $('station').classList.add('off'); }, 20000);
+    if (on) {
+      arriveStation();
+      stationTimer = setTimeout(function () { $('station').classList.add('off'); }, 20000);
+    }
   }
 
   // ---- Текуща песен: същата логика като в приложението (src/nowPlaying.ts) ----
