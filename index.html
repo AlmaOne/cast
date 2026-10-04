@@ -205,7 +205,7 @@
   }
   setInterval(drift, 60000);
 
-  // Редът „+ Радио Alma Mater · 88 MHz · София“ – 20 сек при нова песен, после изчезва.
+  // Редът „+ Радио Alma Mater · 88 MHz · София“ – 32 сек при нова песен, после изчезва.
   // Без песен заглавието и без това е „Радио Alma Mater“ – редът не се показва. „НА ЖИВО“ остава винаги.
   var stationTimer = null, flapTimers = [];
   var STATION_LINE = STATION + ' · ' + FREQ;
@@ -235,7 +235,7 @@
     $('station').classList.toggle('off', !on);
     if (on) {
       arriveStation();
-      stationTimer = setTimeout(function () { $('station').classList.add('off'); }, 20000);
+      stationTimer = setTimeout(function () { $('station').classList.add('off'); }, 32000);
     }
   }
 
@@ -522,7 +522,7 @@
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
     setTimeout(function () { diagOn = false; window.__diagOn = false; $('status').textContent = ''; }, 90000);
-    diag('v10');
+    diag('v11');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
