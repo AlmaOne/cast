@@ -33,14 +33,35 @@
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   #artist { font-size:4.4vmin; color:var(--muted); margin-top:1.6vmin;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .station { margin-top:6vmin; font-size:2.8vmin; color:var(--muted); display:flex; align-items:center; gap:1.6vmin; }
+  .station { margin-top:6vmin; font-size:2.8vmin; color:var(--muted); display:flex; align-items:center; gap:1.6vmin;
+    transition:opacity 2s ease; }
+  /* Редът с „+“ и името се показва за малко при нова песен, после изчезва (против запичане). */
+  .station.off { opacity:0; }
   .station img { width:5.5vmin; height:5.5vmin; }
-  #clock { position:fixed; top:4vmin; right:5vw; font-size:3.4vmin; color:var(--muted); font-variant-numeric:tabular-nums; }
+  /* Часовник като таблата на старите гари. Мести се между три ъгъла (долу вляво са известията). */
+  #clock { position:fixed; display:flex; gap:.12em; align-items:center; font-size:3.6vmin; opacity:.75; transition:opacity 1.2s ease; }
+  #clock.hide { opacity:0; }
+  #clock.pos0 { top:4vmin; right:5vw; } #clock.pos1 { bottom:4vmin; right:5vw; } #clock.pos2 { top:4vmin; left:5vw; }
+  .colon { width:.3em; display:flex; flex-direction:column; gap:.28em; align-items:center; }
+  .colon i { width:.13em; height:.13em; border-radius:50%; background:var(--muted); }
+  .fd { position:relative; width:.95em; height:1.35em; perspective:3em; font-weight:700; color:#E9DEF3; font-variant-numeric:tabular-nums; }
+  .fd .h { position:absolute; left:0; width:100%; height:50%; overflow:hidden; text-align:center; }
+  .fd .h span { display:block; height:1.35em; line-height:1.35em; }
+  .fd .t { top:0; border-radius:.12em .12em 0 0; background:#2A1A3C; }
+  .fd .b { bottom:0; border-radius:0 0 .12em .12em; background:#22142F; }
+  .fd .b span { transform:translateY(-50%); }
+  .fd::after { content:""; position:absolute; left:0; right:0; top:50%; height:1px; background:rgba(0,0,0,.55); z-index:5; }
+  .fd .fa { z-index:3; transform-origin:50% 100%; backface-visibility:hidden; }
+  .fd .fb { z-index:3; transform-origin:50% 0; transform:rotateX(90deg); backface-visibility:hidden; }
+  .fd.go .fa { animation:flipA .22s ease-in forwards; }
+  .fd.go .fb { animation:flipB .22s ease-out .22s forwards; }
+  @keyframes flipA { to { transform:rotateX(-90deg); } }
+  @keyframes flipB { to { transform:rotateX(0); } }
   audio { display:none; }
   /* Малко невидимо видео – държи телевизора буден (без скрийнсейвър на Google). */
   #keep { position:fixed; left:0; bottom:0; width:2px; height:2px; opacity:.01; pointer-events:none; }
   /* Бавно отместване на целия екран срещу „запичане“ на неподвижните надписи. */
-  #drift { position:fixed; inset:0; transition:transform 8s ease-in-out; }
+  #drift { position:fixed; inset:0; transition:transform 20s ease-in-out; }
   #status { position:fixed; left:5vw; bottom:4vmin; font-size:2.4vmin; color:var(--muted); opacity:.85; }
   /* Малки екрани (Lenovo Smart Clock, Nest Hub): един под друг, по-едри букви. */
   @media (max-aspect-ratio: 4/3) {
@@ -58,14 +79,14 @@
 <body>
 <div id="bg"></div><div id="shade"></div>
 <div id="drift">
-<div id="clock"></div>
+<div id="clock" class="pos0"></div>
 <main id="main" class="paused">
   <img id="art" class="logo" alt="">
   <div class="info">
     <div class="live"><span class="dot"></span><span id="liveText">НА ЖИВО</span></div>
     <div id="title">Радио Alma Mater</div>
     <div id="artist">88 MHz · София</div>
-    <div class="station"><img id="smallLogo" alt=""><span>Радио Alma Mater · 88 MHz · София</span></div>
+    <div class="station off" id="station"><img id="smallLogo" alt=""><span>Радио Alma Mater · 88 MHz · София</span></div>
   </div>
 </main>
 <div id="status"></div>
@@ -89,18 +110,78 @@
   var $ = function (id) { return document.getElementById(id); };
   $('art').src = LOGO; $('smallLogo').src = SMALL_LOGO;
 
-  // ---- Часовник горе вдясно ----
-  function tickClock() {
-    var d = new Date();
-    $('clock').textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  // ---- Часовник като таблата на старите гари ----
+  // Всяка минута се обръща само цифрата, която се сменя. На всеки 15 минути всички цифри се превъртат 0→9
+  // и часовникът плавно се мести в следващия ъгъл – пикселите не стоят постоянно едни и същи (против запичане).
+  var digits = [], clockPos = 0, rolling = false;
+  (function () {
+    function mk() {
+      var d = document.createElement('div'); d.className = 'fd';
+      d.innerHTML = '<div class="h t"><span>0</span></div><div class="h b"><span>0</span></div>' +
+        '<div class="h t fa"><span>0</span></div><div class="h b fb"><span>0</span></div>';
+      d._v = '0'; return d;
+    }
+    var c = $('clock');
+    for (var i = 0; i < 4; i++) digits.push(mk());
+    c.appendChild(digits[0]); c.appendChild(digits[1]);
+    var col = document.createElement('div'); col.className = 'colon'; col.innerHTML = '<i></i><i></i>'; c.appendChild(col);
+    c.appendChild(digits[2]); c.appendChild(digits[3]);
+  })();
+  function flipTo(d, v) {
+    if (d._v === v) return;
+    var old = d._v, sp = d.querySelectorAll('span');
+    sp[0].textContent = v; sp[1].textContent = old; sp[2].textContent = old; sp[3].textContent = v;
+    d.classList.remove('go'); void d.offsetWidth; d.classList.add('go'); d._v = v;
+    setTimeout(function () { if (d._v === v) { sp[1].textContent = v; sp[2].textContent = v; d.classList.remove('go'); } }, 460);
   }
-  tickClock(); setInterval(tickClock, 10000);
-  // На всеки 3 минути леко местим всичко (до ~1,5% от екрана) – окото не го забелязва.
+  function timeStr() {
+    var d = new Date();
+    return String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
+  }
+  function tickClock() {
+    if (rolling) return;
+    var t = timeStr();
+    for (var i = 0; i < 4; i++) flipTo(digits[i], t[i]);
+  }
+  function rollClock() {
+    if (rolling) return;
+    rolling = true;
+    var step = 0, iv = setInterval(function () {
+      for (var i = 0; i < 4; i++) flipTo(digits[i], String((+digits[i]._v + 1) % 10));
+      if (++step >= 10) { clearInterval(iv); setTimeout(function () { rolling = false; tickClock(); }, 500); }
+    }, 500);
+  }
+  function moveClock() {
+    var c = $('clock');
+    c.classList.add('hide');
+    setTimeout(function () {
+      c.classList.remove('pos' + clockPos); clockPos = (clockPos + 1) % 3; c.classList.add('pos' + clockPos);
+      c.classList.remove('hide');
+    }, 1300);
+  }
+  (function () { var t = timeStr(); for (var i = 0; i < 4; i++) { digits[i].querySelectorAll('span').forEach(function (x) { x.textContent = t[i]; }); digits[i]._v = t[i]; } })();
+  setInterval(tickClock, 1000);
+  var lastQuarter = Math.floor(new Date().getMinutes() / 15);
+  setInterval(function () {
+    var q = Math.floor(new Date().getMinutes() / 15);
+    if (q !== lastQuarter) { lastQuarter = q; rollClock(); setTimeout(moveClock, 6000); }
+  }, 5000);
+
+  // Всяка минута бавно местим всичко (до ~3% от екрана) – окото не го забелязва.
   function drift() {
-    var r = function () { return ((Math.random() * 2 - 1) * 1.5).toFixed(2); };
+    var r = function () { return ((Math.random() * 2 - 1) * 3).toFixed(2); };
     $('drift').style.transform = 'translate(' + r() + 'vmin,' + r() + 'vmin)';
   }
-  setInterval(drift, 180000);
+  setInterval(drift, 60000);
+
+  // Редът „+ Радио Alma Mater · 88 MHz · София“ – 20 сек при нова песен, после изчезва.
+  // Без песен заглавието и без това е „Радио Alma Mater“ – редът не се показва. „НА ЖИВО“ остава винаги.
+  var stationTimer = null;
+  function flashStation(on) {
+    clearTimeout(stationTimer);
+    $('station').classList.toggle('off', !on);
+    if (on) stationTimer = setTimeout(function () { $('station').classList.add('off'); }, 20000);
+  }
 
   // ---- Текуща песен: същата логика като в приложението (src/nowPlaying.ts) ----
   function splitTitle(raw) {
@@ -236,6 +317,7 @@
       var key = song ? (song.artist + '|' + song.title).toLowerCase() : '';
       if (key === lastKey) return;
       lastKey = key;
+      flashStation(!!song);
       show(song, null, !!song);
       if (song) findArtwork(song.artist, song.title).then(function (art) {
         if (key !== lastKey) return;
