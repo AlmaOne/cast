@@ -424,26 +424,33 @@
       watch();
       return req;
     });
-    // Ако до 15 секунди не е тръгнало – опитваме пак (до 3 пъти).
+    // Ако не тръгне – опитваме пак (до 3 пъти), но без да прекъсваме зареждане, което върви.
     var tries = 0, timer = null, playingNow = false;
+    // Ако зареждането върви (трупа звук), НЕ го започваме отначало – така губехме по 15 сек.
+    // Пробваме пак само при грешка или ако 40 сек нищо не е тръгнало.
+    var buffering = false;
     function watch() {
       clearTimeout(timer);
       timer = setTimeout(function () {
         if (playingNow || tries >= 3) return;
+        if (buffering) { watch(); return; }
         tries++;
         status('Пробвам пак… (' + tries + ')');
         gotLoad = true;
         loadStartedAt = Date.now();
         pm.load(makeReq());
         watch();
-      }, 15000);
+      }, 40000);
     }
     pm.addEventListener(E.PLAYING, function () { playingNow = true; tries = 0; clearTimeout(timer); setPlaying(true); status(''); keepAwake(); });
-    pm.addEventListener(E.BUFFERING, function (e) { if (e.isBuffering) status('Зарежда…'); });
+    pm.addEventListener(E.BUFFERING, function (e) { buffering = !!e.isBuffering; if (e.isBuffering) status('Зарежда…'); });
     pm.addEventListener([E.PAUSE, E.ENDED, E.ABORT], function () { playingNow = false; setPlaying(false); releaseAwake(); });
     pm.addEventListener(E.REQUEST_STOP, function () { clearTimeout(timer); playingNow = false; setPlaying(false); releaseAwake(); });
     pm.addEventListener(E.ERROR, function (e) {
       setPlaying(false);
+      buffering = false;
+      // при грешка – нов опит след 3 сек, без да чакаме
+      if (!playingNow && tries < 3) { clearTimeout(timer); timer = setTimeout(function () { tries++; gotLoad = true; loadStartedAt = Date.now(); pm.load(makeReq()); watch(); }, 3000); }
       status('Грешка при пускане' + (e && e.detailedErrorCode ? ' (код ' + e.detailedErrorCode + ')' : ''));
     });
     // Екранът не изгасва и не пуска скрийнсейвър, докато е отворен.
@@ -584,6 +591,13 @@
 
     var options = new cast.framework.CastReceiverOptions();
     options.disableIdleTimeout = false;
+    // Тръгваме, щом има 1 сек звук (по подразбиране Chromecast чака да натрупа повече).
+    try {
+      var pc = new cast.framework.PlaybackConfig();
+      pc.autoResumeDuration = 1;
+      pc.autoResumeNumberOfSegments = 1;
+      options.playbackConfig = pc;
+    } catch (e) {}
     options.customNamespaces = {};
     options.customNamespaces[NS] = cast.framework.system.MessageType.JSON;
     context.start(options);
