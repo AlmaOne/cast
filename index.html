@@ -443,23 +443,24 @@
       }, 40000);
     }
     pm.addEventListener(E.PLAYING, function () { playingNow = true; tries = 0; clearTimeout(timer); setPlaying(true); status(''); keepAwake(); });
-    var stallTimer = null;
+    var stallTimer = null, everPlayed = false;
     pm.addEventListener(E.BUFFERING, function (e) {
       buffering = !!e.isBuffering;
       clearTimeout(stallTimer);
       if (e.isBuffering) {
         status('Зарежда…');
-        // Ако трупа повече от 8 сек и още не свири – засякло е: пускаме наново (до 3 пъти).
+        // Първото пускане на Chromecast никога не тръгва само (видяно с диагностиката), а второто – винаги.
+        // Затова: щом първото започне да трупа – след 1 сек пускаме наново. При следващите – чакаме до 20 сек.
         stallTimer = setTimeout(function () {
           if (playingNow || tries >= 3) return;
           tries++;
           if (typeof diag === 'function') diag('нов опит ' + tries);
           gotLoad = true; loadStartedAt = Date.now();
           pm.load(makeReq());
-        }, 8000);
+        }, (tries === 0 && !everPlayed) ? 1000 : 20000); // по време на слушане (временна засечка в мрежата) – търпеливо
       }
     });
-    pm.addEventListener(E.PLAYING, function () { clearTimeout(stallTimer); });
+    pm.addEventListener(E.PLAYING, function () { clearTimeout(stallTimer); everPlayed = true; });
     pm.addEventListener([E.PAUSE, E.ENDED, E.ABORT], function () { playingNow = false; setPlaying(false); releaseAwake(); });
     pm.addEventListener(E.REQUEST_STOP, function () { clearTimeout(timer); playingNow = false; setPlaying(false); releaseAwake(); });
     pm.addEventListener(E.ERROR, function (e) {
@@ -521,7 +522,7 @@
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
     setTimeout(function () { diagOn = false; window.__diagOn = false; $('status').textContent = ''; }, 90000);
-    diag('v9 страница');
+    diag('v10');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
@@ -607,6 +608,13 @@
 
     var options = new cast.framework.CastReceiverOptions();
     options.disableIdleTimeout = false;
+    // Тръгваме, щом има 1 сек натрупан звук (по подразбиране Chromecast чака ~8 сек при поток на живо).
+    try {
+      var pc = new cast.framework.PlaybackConfig();
+      pc.autoResumeDuration = 1;
+      pc.autoResumeNumberOfSegments = 1;
+      options.playbackConfig = pc;
+    } catch (e) {}
     options.customNamespaces = {};
     options.customNamespaces[NS] = cast.framework.system.MessageType.JSON;
     context.start(options);
