@@ -127,7 +127,7 @@
   // логото и надписите до 60%, а на всеки 15 мин логото се сменя лилаво ↔ светло.
   var lastSongChange = Date.now();
   setInterval(function () {
-    $('main').classList.toggle('dim', Date.now() - lastSongChange > 10 * 60000);
+    $('main').classList.toggle('dim', longTalk());
   }, 30000);
   function pad2(n) { return String(n).padStart(2, '0'); }
   function tickClock() {
@@ -138,7 +138,7 @@
   // На всеки 15 мин: „НА ЖИВО“ (и при дълго предаване – заглавието) се превъртат, логото се сменя.
   function rollClock() {
     rollRows();
-    if (Date.now() - lastSongChange > 10 * 60000) swapLogo();
+    if (longTalk()) swapLogo(); // само при дълго предаване – не и при дълга песен без обложка
   }
   // „НА ЖИВО“ (или „СПРЯНО“) – буквите се превъртат като на табло и спират на мястото си.
   // Буквите на един ред се превъртат като на табло и спират на мястото си.
@@ -177,18 +177,20 @@
     var t1 = flapText($('liveText'), function () { return $('main').classList.contains('paused') ? 'СПРЯНО' : 'НА ЖИВО'; }) || 0;
     if (!longTalk()) return;
     setTimeout(function () {
+      if (!longTalk()) return; // междувременно е дошла песен – не пипаме името ѝ
       var t2 = flapText($('title')) || 0;
-      setTimeout(function () { flapText($('artist')); }, t2);
+      setTimeout(function () { if (longTalk()) flapText($('artist')); }, t2);
     }, t1);
   }
   // При дълго предаване (без обложка) – логото плавно се сменя: лилаво ↔ светло.
   function swapLogo() {
     var img = $('art');
     if (!img.classList.contains('logo')) return; // показва се обложка – не пипаме
+    var seq = showSeq;
     img.classList.add('swap'); img.style.opacity = '0';
     setTimeout(function () {
-      logoLight = !logoLight;
-      img.src = currentLogo();
+      // междувременно е дошла песен (с обложка) – само връщаме видимостта
+      if (seq === showSeq && img.classList.contains('logo')) { logoLight = !logoLight; img.src = currentLogo(); }
       img.style.opacity = '';
       setTimeout(function () { img.classList.remove('swap'); }, 1600);
     }, 1500);
@@ -278,7 +280,9 @@
   }
   function decodeXml(s) {
     return s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'")
-      .replace(/&#(\d+);/g, function (_, n) { return String.fromCharCode(Number(n)); }).replace(/&amp;/g, '&');
+      .replace(/&#x([0-9a-f]+);/gi, function (_, h) { return cp(parseInt(h, 16)); })
+      .replace(/&#(\d+);/g, function (_, n) { return cp(Number(n)); }).replace(/&amp;/g, '&');
+    function cp(n) { try { return String.fromCodePoint(n); } catch (e) { return ''; } } // и емоджи
   }
   function fetchText(url, ms) {
     var ctrl = new AbortController(), timer = setTimeout(function () { ctrl.abort(); }, ms || 8000);
@@ -315,19 +319,60 @@
   function people(x) {
     return x.split(/\s*[,&\/]\s*|\s+(?:feat\.?|ft\.?|featuring|and|x|и)\s+/i).map(norm).filter(Boolean);
   }
+  // Дали думите needle се срещат последователно (като цели думи) в hay.
+  function hasWordSeq(hay, needle) {
+    if (!needle.length || needle.length > hay.length) return false;
+    for (var i = 0; i + needle.length <= hay.length; i++) {
+      var ok = true;
+      for (var j = 0; j < needle.length; j++) if (hay[i + j] !== needle[j]) { ok = false; break; }
+      if (ok) return true;
+    }
+    return false;
+  }
+  function startsWithWords(hay, needle) {
+    if (!needle.length || needle.length > hay.length) return false;
+    for (var i = 0; i < needle.length; i++) if (hay[i] !== needle[i]) return false;
+    return true;
+  }
+  // Същият изпълнител ли е (само цели имена): 2 – същият, 1 – само участник (стига само ако и песента съвпада), 0 – друг.
+  function artistLevel(artist, rArtist) {
+    var ours = people(artist), theirs = people(rArtist), whole = norm(rArtist), n = norm(artist), b = bareName(artist);
+    if (!n || !whole) return 0;
+    if (n === whole || (!!b && b === bareName(rArtist)) || (ours.length === 1 && theirs[0] === ours[0])) return 2;
+    if (ours.some(function (o) { return o === whole || theirs.indexOf(o) !== -1; }) ||
+      theirs.some(function (t) { return t === n; })) return 1;
+    return 0;
+  }
+  // Заглавието без скобите и „feat.“.
+  function coreTitle(x) { return x.split(/\s*[(\[]|\s+(?:feat\.?|ft\.?)\s+|\s+-\s+/i)[0] || x; }
+  // Същата песен ли е – по цели думи („Love of My Life“ ≠ „Love“, „Mama Maria“ = „Mamma Maria“).
+  function titleMatches(title, rTrack) {
+    var ct = words(coreTitle(title)), cr = words(coreTitle(rTrack));
+    if (!ct.length || !cr.length) return false;
+    if (ct.join(' ') === cr.join(' ')) return true;
+    if (startsWithWords(cr, ct)) return true;
+    if (startsWithWords(ct, cr) && cr.length / ct.length >= 0.6) return true;
+    return overlap(title, rTrack) >= 0.6;
+  }
   // 2 – същата песен (или изпълнителят, ако имаме само име), 1 – същият изпълнител, друга песен, 0 – не.
+  // Същите правила като в приложението (src/nowPlaying.ts → matchScore).
   function matchScore(artist, title, rArtist, rTrack) {
-    var nT = norm(title), a = norm(rArtist);
-    if (!artist) return (!!nT && !!a && (a.indexOf(nT) !== -1 || nT.indexOf(a) !== -1)) ? 2 : 0;
-    // Изпълнителят съвпада само като цяло име („Мариус“ ≠ „Marius de Vries“, но „KOOL“ = „Kool & The Gang“).
-    var nA = norm(artist), ours = people(artist), theirs = people(rArtist);
-    var artistOk = ours.some(function (o) { return o === a || theirs.indexOf(o) !== -1; }) ||
-      theirs.some(function (t) { return t === nA; }) ||
-      (!!bareName(artist) && bareName(artist) === bareName(rArtist)); // „Ricchi E Poveri“ = „Ricchi & Poveri“
-    if (!artistOk) return 0;
-    var t = norm(rTrack);
-    var titleOk = !!nT && !!t && (t.indexOf(nT) === 0 || nT.indexOf(t) === 0 || overlap(title, rTrack) >= 0.6);
-    return titleOk ? 2 : 1;
+    if (!artist) {
+      // Без изпълнител (име на предаване) – цели думи: „Новини“ ≠ „Ni“, „Sia“ ≠ „Asia“.
+      var tw = words(title), aw = words(rArtist);
+      if (!tw.length || !aw.length) return 0;
+      var ok = tw.join(' ') === aw.join(' ') || (hasWordSeq(aw, tw) && tw.join('').length >= 4) ||
+        (hasWordSeq(tw, aw) && aw.join('').length >= 4);
+      return ok ? 2 : 0;
+    }
+    var lvl = artistLevel(artist, rArtist);
+    if (!lvl) return 0;
+    if (titleMatches(title, rTrack)) return 2;
+    return lvl === 2 ? 1 : 0;
+  }
+  function isOwnAlbum(artist, title, coll) {
+    if (!coll) return true;
+    return artist ? artistLevel(artist, coll) === 2 : matchScore('', title, coll, '') === 2;
   }
   var artCache = {};
   // Опити: американският магазин → българският → на латиница → само заглавието → само изпълнителя.
@@ -339,19 +384,24 @@
     var tries = [[full, 'us'], [full, 'bg']];
     if (hasCyrillic(full)) tries.push([translit(full), 'bg']);
     if (artist && title) { tries.push([title, 'bg']); tries.push([artist, 'bg']); }
-    var fallback = null;
+    var fallback = null, failed = false;
     function attempt(i) {
       if (i >= tries.length) return Promise.resolve(fallback);
       var url = 'https://itunes.apple.com/search?term=' + encodeURIComponent(tries[i][0]) +
         '&media=music&entity=song&limit=10&country=' + tries[i][1];
+      // Неуспешна заявка не изтрива вече намереното – продължаваме със следващия опит.
+      // И отговор, който не е JSON (iTunes отказва с HTML страница), е „неуспешна заявка“.
       return fetchText(url).then(function (txt) {
+        try { return JSON.parse(txt).results || []; } catch (e) { failed = true; return null; }
+      }, function () { failed = true; return null; })
+        .then(function (results) {
+        if (!results) return attempt(i + 1);
         var best = null, bestScore = 0, bestRank = 0;
-        (JSON.parse(txt).results || []).forEach(function (r) {
+        results.forEach(function (r) {
           var sc = matchScore(artist, title, r.artistName || '', r.trackName || '');
           if (!sc || !r.artworkUrl100) return;
           // „Обложка от изпълнителя“ – само от негов албум (на сборните корици обикновено е друг човек).
-          var own = !r.collectionArtistName || (artist ? matchScore(artist, 'x', r.collectionArtistName, 'y') > 0
-            : matchScore('', title, r.collectionArtistName, '') === 2);
+          var own = isOwnAlbum(artist, title, r.collectionArtistName);
           if (sc === 1 && !own) return;
           // Подредба: същата песен > собствен албум > най-малък номер (навсякъде една и съща обложка).
           var rank = sc * 2 + (own ? 1 : 0);
@@ -366,23 +416,31 @@
       });
     }
     return attempt(0).then(function (url) {
+      if (!url && failed) return undefined; // нищо не намерихме, но и не всичко мина – ще се пробва пак
       artCache[key] = url;
       return url;
     }).catch(function () { return undefined; }); // undefined = търсенето не успя (мрежа/iTunes отказа), null = няма обложка
   }
 
   // ---- Показване ----
-  var lastKey = null;
+  var lastKey = null, showSeq = 0;
   // pending: обложката още се търси – фонът остава стария (без мигане между песните).
   function show(song, art, pending) {
+    var seq = ++showSeq;
     $('title').textContent = song ? song.title : STATION;
     $('artist').textContent = song ? (song.artist || STATION) : FREQ;
     var img = $('art');
     if (art) {
       var pre = new Image();
       pre.onload = function () {
+        if (seq !== showSeq) return; // междувременно е дошла друга песен – не слагаме старата обложка
         img.src = art; img.classList.remove('logo');
         $('bg').style.backgroundImage = 'url("' + art + '")'; $('bg').classList.remove('logo'); $('bg').classList.add('on');
+      };
+      pre.onerror = function () {
+        if (seq !== showSeq) return;
+        img.src = currentLogo(); img.classList.add('logo'); // обложката не се зареди – логото
+        $('bg').style.backgroundImage = 'url("' + LOGO + '")'; $('bg').classList.add('on', 'logo');
       };
       pre.src = art;
     } else {
@@ -441,6 +499,11 @@
       var fromPhone = req && req.senderId && req.senderId !== 'local';
       if (fromPhone && typeof diag === 'function') diag((playingNow || Date.now() - loadStartedAt < 20000) ? 'тел. (пропуснат)' : 'тел. пуска');
       if (fromPhone && (playingNow || Date.now() - loadStartedAt < 20000)) return null;
+      if (fromPhone) {
+        tries = 0; // ново „Пусни“ от слушателя – предпазната мрежа пак е в сила
+        loadStartedAt = Date.now(); // второ натискане до 20 сек не започва зареждането отначало
+        clearTimeout(sleepCloseT); sleepCloseT = null; // пуснато наново след таймера – не затваряме екрана
+      }
       gotLoad = true;
       status('Зарежда…');
       if (req && req.media) {
@@ -490,11 +553,28 @@
       }
     });
     pm.addEventListener(E.PLAYING, function () { clearTimeout(stallTimer); everPlayed = true; });
-    pm.addEventListener([E.PAUSE, E.ENDED, E.ABORT], function () { playingNow = false; setPlaying(false); releaseAwake(); });
-    pm.addEventListener(E.REQUEST_STOP, function () { clearTimeout(timer); playingNow = false; setPlaying(false); releaseAwake(); });
+    // Спряно – никакви автоматични опити да пуснем пак (иначе радиото тръгваше само до 20 сек след „Спри“),
+    // а следващото „Пусни“ от телефона се приема веднага.
+    function stoppedByUser() { clearTimeout(timer); clearTimeout(stallTimer); buffering = false; loadStartedAt = 0; }
+    pm.addEventListener([E.PAUSE, E.ENDED, E.ABORT], function () { clearTimeout(stallTimer); playingNow = false; setPlaying(false); releaseAwake(); });
+    // Сървърът е затворил потока („край“ при радио на живо) – пускаме пак. След „Спри“ и таймера tries = 3 → не.
+    pm.addEventListener(E.ENDED, function () {
+      if (tries >= 3) return;
+      clearTimeout(timer);
+      status('Връзката прекъсна – пускам пак…');
+      timer = setTimeout(function () { tries++; gotLoad = true; loadStartedAt = Date.now(); pm.load(makeReq()); watch(); }, 3000);
+    });
+    // „Спри“ от човека: никакви нови опити (грешка или засечка след това не пуска радиото само).
+    // Следващото „Пусни“ от телефона връща tries на 0.
+    pm.addEventListener(E.REQUEST_STOP, function () { stoppedByUser(); tries = 3; playingNow = false; setPlaying(false); releaseAwake(); });
+    pm.addEventListener(E.REQUEST_PAUSE, function () { stoppedByUser(); });
     pm.addEventListener(E.ERROR, function (e) {
+      // Грешка по време на слушане: радиото вече не свири (иначе новият опит и „Пусни“ от телефона се блокират).
+      playingNow = false;
+      releaseAwake();
       setPlaying(false);
       buffering = false;
+      clearTimeout(stallTimer); // само един нов опит – този след грешката
       // при грешка – нов опит след 3 сек, без да чакаме
       if (!playingNow && tries < 3) { clearTimeout(timer); timer = setTimeout(function () { tries++; gotLoad = true; loadStartedAt = Date.now(); pm.load(makeReq()); watch(); }, 3000); }
       status('Грешка при пускане' + (e && e.detailedErrorCode ? ' (код ' + e.detailedErrorCode + ')' : ''));
@@ -551,8 +631,7 @@
       diagLog.push(t + ' ' + name);
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
-    setTimeout(function () { diagOn = false; window.__diagOn = false; $('status').textContent = ''; }, 90000);
-    diag('v21');
+    diag('v23');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
@@ -588,6 +667,7 @@
         origVol = null;
       }
     }
+    var sleepCloseT = null; // затварянето на екрана 5 сек след таймера (отменя се при ново „Пусни“)
     function clearSleep(keepVolume) {
       clearInterval(sleepTick); sleepTick = null; sleepUntil = null;
       if (!keepVolume) restoreVol();
@@ -606,7 +686,8 @@
         status('Таймерът за заспиване спря радиото');
         // След 5 секунди затваряме нашия екран – Google TV се връща в обичайния си режим
         // и сам пуска скрийнсейвъра / заспива. Телефонът също разбира, че връзката е приключила.
-        setTimeout(function () { restoreVol(); try { context.stop(); } catch (e) {} }, 5000);
+        clearTimeout(sleepCloseT);
+        sleepCloseT = setTimeout(function () { sleepCloseT = null; restoreVol(); try { context.stop(); } catch (e) {} }, 5000);
         return;
       }
       if (left < SLEEP_FADE_MS) {
