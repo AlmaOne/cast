@@ -49,24 +49,18 @@
   #stationText .ch { display:inline-block; min-width:.32em; text-align:center; }
   .station img { width:5.5vmin; height:5.5vmin; }
   /* Часовник като таблата на старите гари. Мести се между три ъгъла (долу вляво са известията). */
-  #clock { position:fixed; display:flex; gap:.12em; align-items:center; font-size:3.6vmin; opacity:.75; transition:opacity 1.2s ease; }
+  /* Минималистичен часовник: тънки цифри (Inter Thin, само цифрите – вградени), часове минути секунди,
+     без двоеточия, цвят от светлосиньо към лилаво. Мести се между три ъгъла (долу вляво са известията). */
+  @font-face { font-family:ThinDigits; font-weight:100; src:url(data:font/woff2;base64,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) format('woff2'); }
+  #clock { position:fixed; font-family:ThinDigits, 'Helvetica Neue', Roboto, sans-serif; font-weight:100; font-size:9vmin;
+    line-height:1; letter-spacing:-.02em; word-spacing:.18em; white-space:nowrap; font-variant-numeric:tabular-nums;
+    color:#C7A4EB; opacity:.9; transition:opacity 1.2s ease; }
+  @supports ((-webkit-background-clip:text) or (background-clip:text)) {
+    #clock { background:linear-gradient(90deg, #8FD8EE 0%, #B9B4F0 50%, #D7A8F2 100%);
+      -webkit-background-clip:text; background-clip:text; color:transparent; }
+  }
   #clock.hide { opacity:0; }
-  #clock.pos0 { top:4vmin; right:5vw; } #clock.pos1 { bottom:4vmin; right:5vw; } #clock.pos2 { top:4vmin; left:5vw; }
-  .colon { width:.3em; display:flex; flex-direction:column; gap:.28em; align-items:center; }
-  .colon i { width:.13em; height:.13em; border-radius:50%; background:#E2C6FF; }
-  .fd { position:relative; width:.95em; height:1.35em; perspective:3em; font-weight:700; color:#E2C6FF; font-variant-numeric:tabular-nums; }
-  .fd .h { position:absolute; left:0; width:100%; height:50%; overflow:hidden; text-align:center; }
-  .fd .h span { display:block; height:1.35em; line-height:1.35em; }
-  .fd .t { top:0; border-radius:.12em .12em 0 0; background:#2A1A3C; }
-  .fd .b { bottom:0; border-radius:0 0 .12em .12em; background:#22142F; }
-  .fd .b span { transform:translateY(-50%); }
-  .fd::after { content:""; position:absolute; left:0; right:0; top:50%; height:1px; background:rgba(0,0,0,.55); z-index:5; }
-  .fd .fa { z-index:3; transform-origin:50% 100%; backface-visibility:hidden; }
-  .fd .fb { z-index:3; transform-origin:50% 0; transform:rotateX(90deg); backface-visibility:hidden; }
-  .fd.go .fa { animation:flipA .22s ease-in forwards; }
-  .fd.go .fb { animation:flipB .22s ease-out .22s forwards; }
-  @keyframes flipA { to { transform:rotateX(-90deg); } }
-  @keyframes flipB { to { transform:rotateX(0); } }
+  #clock.pos0 { top:3.5vmin; right:5vw; } #clock.pos1 { bottom:3.5vmin; right:5vw; } #clock.pos2 { top:3.5vmin; left:5vw; }
   audio { display:none; }
   /* Малко невидимо видео – държи телевизора буден (без скрийнсейвър на Google). */
   #keep { position:fixed; left:0; bottom:0; width:2px; height:2px; opacity:.01; pointer-events:none; }
@@ -124,54 +118,25 @@
   var $ = function (id) { return document.getElementById(id); };
   $('art').src = LOGO; $('smallLogo').src = SMALL_LOGO;
 
-  // ---- Часовник като таблата на старите гари ----
-  // Всяка минута се обръща само цифрата, която се сменя. На всеки 15 минути всички цифри се превъртат 0→9
-  // и часовникът плавно се мести в следващия ъгъл – пикселите не стоят постоянно едни и същи (против запичане).
-  var digits = [], clockPos = 0, rolling = false;
+  // ---- Минималистичен часовник: часове минути секунди ----
+  // На всеки 15 минути плавно изчезва и се появява в следващия ъгъл (против запичане).
+  var clockPos = 0;
   // Кога за последно се е сменила песента. Над 10 мин без смяна (дълго предаване) – притъмняваме
   // логото и надписите до 60%, а на всеки 15 мин логото се сменя лилаво ↔ светло.
   var lastSongChange = Date.now();
   setInterval(function () {
     $('main').classList.toggle('dim', Date.now() - lastSongChange > 10 * 60000);
   }, 30000);
-  (function () {
-    function mk() {
-      var d = document.createElement('div'); d.className = 'fd';
-      d.innerHTML = '<div class="h t"><span>0</span></div><div class="h b"><span>0</span></div>' +
-        '<div class="h t fa"><span>0</span></div><div class="h b fb"><span>0</span></div>';
-      d._v = '0'; return d;
-    }
-    var c = $('clock');
-    for (var i = 0; i < 4; i++) digits.push(mk());
-    c.appendChild(digits[0]); c.appendChild(digits[1]);
-    var col = document.createElement('div'); col.className = 'colon'; col.innerHTML = '<i></i><i></i>'; c.appendChild(col);
-    c.appendChild(digits[2]); c.appendChild(digits[3]);
-  })();
-  function flipTo(d, v) {
-    if (d._v === v) return;
-    var old = d._v, sp = d.querySelectorAll('span');
-    sp[0].textContent = v; sp[1].textContent = old; sp[2].textContent = old; sp[3].textContent = v;
-    d.classList.remove('go'); void d.offsetWidth; d.classList.add('go'); d._v = v;
-    setTimeout(function () { if (d._v === v) { sp[1].textContent = v; sp[2].textContent = v; d.classList.remove('go'); } }, 460);
-  }
-  function timeStr() {
-    var d = new Date();
-    return String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
-  }
+  function pad2(n) { return String(n).padStart(2, '0'); }
   function tickClock() {
-    if (rolling) return;
-    var t = timeStr();
-    for (var i = 0; i < 4; i++) flipTo(digits[i], t[i]);
+    var d = new Date();
+    var t = pad2(d.getHours()) + ' ' + pad2(d.getMinutes()) + ' ' + pad2(d.getSeconds());
+    if ($('clock').textContent !== t) $('clock').textContent = t;
   }
+  // На всеки 15 мин: „НА ЖИВО“ (и при дълго предаване – заглавието) се превъртат, логото се сменя.
   function rollClock() {
-    if (rolling) return;
-    rolling = true;
     rollRows();
     if (Date.now() - lastSongChange > 10 * 60000) swapLogo();
-    var step = 0, iv = setInterval(function () {
-      for (var i = 0; i < 4; i++) flipTo(digits[i], String((+digits[i]._v + 1) % 10));
-      if (++step >= 10) { clearInterval(iv); setTimeout(function () { rolling = false; tickClock(); }, 500); }
-    }, 500);
   }
   // „НА ЖИВО“ (или „СПРЯНО“) – буквите се превъртат като на табло и спират на мястото си.
   // Буквите на един ред се превъртат като на табло и спират на мястото си.
@@ -234,7 +199,7 @@
       c.classList.remove('hide');
     }, 1300);
   }
-  (function () { var t = timeStr(); for (var i = 0; i < 4; i++) { digits[i].querySelectorAll('span').forEach(function (x) { x.textContent = t[i]; }); digits[i]._v = t[i]; } })();
+  tickClock();
   setInterval(tickClock, 1000);
   var lastQuarter = Math.floor(new Date().getMinutes() / 15);
   setInterval(function () {
@@ -584,7 +549,7 @@
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
     setTimeout(function () { diagOn = false; window.__diagOn = false; $('status').textContent = ''; }, 90000);
-    diag('v16');
+    diag('v18');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
