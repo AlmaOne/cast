@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Обложки – поправки</title>
+<!-- Alma Plus: страница за поддръжка на списъка с поправки на обложките (covers.json).
+     Само генерира файла – нищо не записва сама. Приложението засега НЕ чете covers.json (тестово). -->
+<style>
+  :root { --bg:#1C0D2B; --card:#2B1740; --line:#432763; --muted:#B9A7CE; --hl:#C7A4EB; --acc:#7B3FB3; --ok:#4ade80; --warn:#fbbf24; --bad:#f87171; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:#fff; font:15px/1.45 Roboto,"Segoe UI",Arial,sans-serif; padding:20px 16px 40px; }
+  .wrap { max-width:1100px; margin:0 auto; }
+  h1 { font-size:22px; margin-bottom:6px; }
+  .sub { color:var(--muted); font-size:14px; margin-bottom:20px; }
+  .grid { display:grid; grid-template-columns:340px 1fr; gap:16px; }
+  @media (max-width:820px) { .grid { grid-template-columns:1fr; } }
+  .box { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; min-width:0; }
+  .box h2 { font-size:15px; margin-bottom:10px; color:var(--hl); font-weight:600; }
+  .song { display:flex; align-items:center; gap:10px; padding:8px; border-radius:10px; cursor:pointer; }
+  .song:hover, .song.sel { background:rgba(199,164,235,.12); }
+  .song .tx { min-width:0; flex:1; }
+  .song .t { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .song .a { color:var(--muted); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .song .w { color:var(--muted); font-size:12px; opacity:.7; flex:none; }
+  .tag { font-size:11px; padding:2px 7px; border-radius:10px; flex:none; }
+  .tag.fix { background:rgba(251,191,36,.15); color:var(--warn); }
+  .tag.now { background:rgba(239,68,68,.18); color:#fca5a5; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+  input { flex:1; min-width:140px; background:#1f0f2f; border:1px solid var(--line); color:#fff; border-radius:9px; padding:9px 11px; font:inherit; }
+  button { background:var(--acc); color:#fff; border:0; border-radius:9px; padding:9px 14px; font:inherit; font-weight:600; cursor:pointer; }
+  button.sec { background:transparent; border:1px solid var(--line); color:var(--muted); font-weight:500; }
+  button:disabled { opacity:.45; cursor:default; }
+  .results { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+  .res { background:#1f0f2f; border:2px solid transparent; border-radius:12px; padding:8px; cursor:pointer; }
+  .res:hover { border-color:var(--line); } .res.sel { border-color:var(--hl); }
+  .res .c { aspect-ratio:1; border-radius:8px; background:#3a2152 center/cover; position:relative; }
+  .res .chk { position:absolute; right:6px; top:6px; width:24px; height:24px; border-radius:50%; background:var(--hl); color:#2B1740; font-weight:800; display:none; align-items:center; justify-content:center; }
+  .res.sel .chk { display:flex; }
+  .res .tr { font-size:12px; color:var(--muted); margin-top:7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .res .al { font-size:13px; font-weight:600; line-height:1.3; }
+  .res .m { font-size:12px; color:var(--muted); }
+  .res .warn { font-size:11px; color:var(--warn); margin-top:2px; }
+  .res.logo .c { display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:13px; text-align:center; padding:10px; }
+  .msg { color:var(--muted); font-size:13px; margin:6px 0 12px; }
+  .list { margin-top:4px; }
+  .item { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid rgba(67,39,99,.6); }
+  .item .th { width:40px; height:40px; border-radius:6px; flex:none; background:#3a2152 center/cover; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--muted); text-align:center; }
+  .item .k { flex:1; min-width:0; font-size:13px; word-break:break-word; }
+  .item button { padding:5px 10px; font-size:12px; }
+  pre { background:#140920; border:1px solid var(--line); border-radius:10px; padding:12px; font:12px/1.5 Consolas,Menlo,monospace; color:#e9dcf7; white-space:pre-wrap; word-break:break-all; max-height:220px; overflow:auto; margin-top:10px; }
+  .hint { font-size:12.5px; color:var(--muted); margin-top:10px; line-height:1.55; }
+  .hint b { color:#fff; font-weight:600; }
+  .toast { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:#fff; color:#2B1740; padding:9px 16px; border-radius:20px; font-weight:600; opacity:0; transition:opacity .3s; pointer-events:none; }
+  .toast.on { opacity:1; }
+  details { margin-top:10px; } summary { cursor:pointer; color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Обложки – поправки</h1>
+  <div class="sub">Избираш песен → търсиш в iTunes → избираш правилната обложка → добавяш → изтегляш <code>covers.json</code> и го качваш в GitHub (AlmaOne/cast).
+    <b style="color:#fbbf24">Тестово:</b> приложението засега не чете този файл.</div>
+
+  <div class="grid">
+    <div class="box">
+      <h2>Песни от радиото (докато страницата е отворена)</h2>
+      <div id="songs"><div class="msg">Чакам песен от радиото…</div></div>
+      <div class="hint">Страницата следи радиото на всеки 10 сек и пази песните, докато е отворена (до 30).</div>
+    </div>
+
+    <div class="box">
+      <h2>Търсене в iTunes</h2>
+      <div class="row">
+        <input id="artist" placeholder="Изпълнител">
+        <input id="title" placeholder="Песен">
+        <button onclick="search()">Търси</button>
+      </div>
+      <div class="msg" id="msg">Избери песен отляво или напиши изпълнител и песен.</div>
+      <div class="results" id="results"></div>
+      <div class="row" style="margin-top:14px">
+        <button id="addBtn" onclick="addSel()" disabled>Добави избраната в списъка</button>
+      </div>
+
+      <h2 style="margin-top:18px">Списък с поправки – <span id="cnt">0</span></h2>
+      <div class="msg" id="loadMsg"></div>
+      <div class="list" id="list"></div>
+      <div class="row" style="margin-top:12px">
+        <button onclick="download()">Изтегли covers.json</button>
+        <button class="sec" onclick="copyJson()">Копирай</button>
+      </div>
+      <details><summary>Виж файла</summary><pre id="json"></pre></details>
+      <div class="hint">Качване: <b>github.com/AlmaOne/cast → Add file → Upload files → covers.json → Commit</b> (заменя стария). Ключът е „изпълнител|песен“ с малки букви; стойност <b>null</b> = без обложка (логото).</div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  'use strict';
+  var NOW_PLAYING_URL = 'https://a1.vizitec.com:8001/almamater.xspf';
+  var $ = function(id){ return document.getElementById(id); };
+  var LIST = {}, songs = [], lastKey = '', sel = null;
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function key(a, t){ return (a + '|' + t).toLowerCase().replace(/\s+/g, ' ').trim(); }
+
+  // ---- Текущата песен – същото четене като в cast-receiver/index.html ----
+  function splitTitle(raw) {
+    var t = raw.trim(), i = t.indexOf(' - ');
+    return i === -1 ? { artist: '', title: t } : { artist: t.slice(0, i).trim(), title: t.slice(i + 3).trim() };
+  }
+  function fixEncoding(s) {
+    if (!/[\u0080-ÿ]/.test(s) || /[^\u0000-ÿ]/.test(s)) return s;
+    var out = '', i = 0;
+    while (i < s.length) {
+      var b = s.charCodeAt(i), n = 0, cp = 0;
+      if (b < 0x80) { out += s[i++]; continue; }
+      else if (b >= 0xc2 && b <= 0xdf) { n = 1; cp = b & 0x1f; }
+      else if (b >= 0xe0 && b <= 0xef) { n = 2; cp = b & 0x0f; }
+      else if (b >= 0xf0 && b <= 0xf4) { n = 3; cp = b & 0x07; }
+      else return s;
+      if (i + n >= s.length) return s;
+      for (var k = 1; k <= n; k++) { var c = s.charCodeAt(i + k); if ((c & 0xc0) !== 0x80) return s; cp = (cp << 6) | (c & 0x3f); }
+      out += String.fromCodePoint(cp); i += n + 1;
+    }
+    return out;
+  }
+  function decodeXml(s) {
+    return s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+      .replace(/&#x([0-9a-f]+);/gi, function (_, h) { return cp(parseInt(h, 16)); })
+      .replace(/&#(\d+);/g, function (_, n) { return cp(Number(n)); }).replace(/&amp;/g, '&');
+    function cp(n) { try { return String.fromCodePoint(n); } catch (e) { return ''; } }
+  }
+  function poll() {
+    fetch(NOW_PLAYING_URL + '?_=' + Date.now()).then(function(r){ return r.text(); }).then(function(xml){
+      var track = (xml.match(/<track>([\s\S]*?)<\/track>/) || [])[1] || '';
+      var raw = fixEncoding(decodeXml((track.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '')).trim();
+      var s = raw ? splitTitle(raw) : null;
+      if (!s || !s.title) return;
+      var k = key(s.artist, s.title); if (k === lastKey) return; lastKey = k;
+      var d = new Date(); s.at = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+      songs.unshift(s); songs = songs.slice(0, 30); renderSongs();
+    }).catch(function(){
+      if (!songs.length) $('songs').innerHTML = '<div class="msg">Не мога да прочета песента от радиото. Пиши изпълнител и песен ръчно.</div>';
+    });
+  }
+  function renderSongs(){
+    var c = $('songs'); c.innerHTML = '';
+    songs.forEach(function(s, i){
+      var d = document.createElement('div'); d.className = 'song';
+      var inList = LIST.hasOwnProperty(key(s.artist, s.title));
+      d.innerHTML = '<div class="tx"><div class="t">' + esc(s.title) + '</div><div class="a">' + esc(s.artist || '—') + '</div></div>' +
+        (i === 0 ? '<span class="tag now">сега</span>' : '') + (inList ? '<span class="tag fix">в списъка</span>' : '') + '<span class="w">' + s.at + '</span>';
+      d.onclick = function(){ document.querySelectorAll('.song').forEach(function(e){ e.classList.remove('sel'); }); d.classList.add('sel');
+        $('artist').value = s.artist; $('title').value = s.title; search(); };
+      c.appendChild(d);
+    });
+  }
+
+  // ---- Търсене в iTunes (JSONP – работи от всяка страница) ----
+  var cbN = 0;
+  window.search = function(){
+    var a = $('artist').value.trim(), t = $('title').value.trim(); if (!a && !t) return;
+    $('msg').textContent = 'Търсене…'; $('results').innerHTML = ''; sel = null; setAdd();
+    var name = 'itcb' + (++cbN), done = false, s = document.createElement('script');
+    window[name] = function(data){ done = true; show((data.results || []).filter(function(r){ return r.artworkUrl100; })); };
+    s.src = 'https://itunes.apple.com/search?entity=song&limit=20&term=' + encodeURIComponent((a + ' ' + t).trim()) + '&callback=' + name;
+    s.onerror = function(){ if (!done) { done = true; $('msg').textContent = 'iTunes не отговаря. Опитай пак след малко.'; } };
+    document.body.appendChild(s);
+    setTimeout(function(){ if (!done) { done = true; $('msg').textContent = 'iTunes не отговаря. Опитай пак след малко.'; } }, 8000);
+  };
+  function show(list){
+    var box = $('results'); box.innerHTML = '';
+    // Еднакви обложки (същия албум) – само веднъж
+    var seen = {}; list = list.filter(function(r){ var id = r.collectionId; if (seen[id]) return false; seen[id] = 1; return true; });
+    $('msg').textContent = list.length ? list.length + ' резултата. Избери правилната обложка:' : 'Нищо не е намерено – може „Без обложка“ или друго изписване.';
+    list.forEach(function(r){
+      var d = document.createElement('div'); d.className = 'res';
+      var comp = /various/i.test(r.collectionArtistName || r.artistName || '') || /hits|best of|collection|compilation|essential|anthology|най-доброто/i.test(r.collectionName || '');
+      d.innerHTML = '<div class="c" style="background-image:url(' + esc(r.artworkUrl100.replace('100x100bb', '300x300bb')) + ')"><span class="chk">✓</span></div>' +
+        '<div class="tr">' + esc(r.artistName) + ' – ' + esc(r.trackName) + '</div>' +
+        '<div class="al">' + esc(r.collectionName || '') + '</div><div class="m">' + String(r.releaseDate || '').slice(0, 4) + '</div>' +
+        (comp ? '<div class="warn">⚠ сборен албум</div>' : '');
+      d.onclick = function(){ pick(d, r.artworkUrl100.replace('100x100bb', '1000x1000bb')); };
+      box.appendChild(d);
+    });
+    var n = document.createElement('div'); n.className = 'res logo';
+    n.innerHTML = '<div class="c">Без обложка<br>(логото на радиото)</div><div class="al">Няма правилна</div><div class="m">приложението няма да търси</div>';
+    n.onclick = function(){ pick(n, null); }; box.appendChild(n);
+  }
+  function pick(el, url){ document.querySelectorAll('.res').forEach(function(e){ e.classList.remove('sel'); }); el.classList.add('sel'); sel = { url: url }; setAdd(); }
+  function setAdd(){ $('addBtn').disabled = !sel; }
+  window.addSel = function(){
+    var a = $('artist').value.trim(), t = $('title').value.trim(); if (!sel || !t) return;
+    var k = key(a, t); LIST[k] = sel.url; renderList(); renderSongs(); toast('Добавено: ' + k);
+  };
+
+  // ---- Списъкът ----
+  function renderList(){
+    var keys = Object.keys(LIST).sort(), c = $('list'); c.innerHTML = '';
+    $('cnt').textContent = keys.length;
+    keys.forEach(function(k){
+      var d = document.createElement('div'); d.className = 'item'; var url = LIST[k];
+      d.innerHTML = '<div class="th" style="' + (url ? 'background-image:url(' + esc(url.replace('1000x1000bb', '100x100bb')) + ')' : '') + '">' + (url ? '' : 'лого') + '</div>' +
+        '<div class="k">' + esc(k) + '</div><button class="sec">Махни</button>';
+      d.querySelector('button').onclick = function(){ delete LIST[k]; renderList(); renderSongs(); };
+      c.appendChild(d);
+    });
+    $('json').textContent = json();
+  }
+  function json(){ var o = {}; Object.keys(LIST).sort().forEach(function(k){ o[k] = LIST[k]; }); return JSON.stringify(o, null, 2) + '\n'; }
+  window.download = function(){ var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([json()], { type: 'application/json' })); a.download = 'covers.json'; a.click(); };
+  window.copyJson = function(){ navigator.clipboard.writeText(json()).then(function(){ toast('Копирано'); }, function(){ toast('Не можа да се копира'); }); };
+  var tt; function toast(m){ var e = $('toast'); e.textContent = m; e.classList.add('on'); clearTimeout(tt); tt = setTimeout(function(){ e.classList.remove('on'); }, 1800); }
+
+  // Зарежда текущия covers.json от същото място (GitHub Pages)
+  fetch('covers.json?_=' + Date.now()).then(function(r){ if (!r.ok) throw 0; return r.json(); }).then(function(o){
+    LIST = o && typeof o === 'object' ? o : {}; $('loadMsg').textContent = 'Зареден е текущият covers.json от GitHub.'; renderList(); renderSongs();
+  }).catch(function(){ $('loadMsg').textContent = 'Няма качен covers.json – започваш с празен списък.'; renderList(); });
+
+  poll(); setInterval(poll, 10000);
+})();
+</script>
+</body>
+</html>
