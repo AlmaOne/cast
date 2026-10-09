@@ -13,6 +13,12 @@
   body { background:var(--bg); color:#fff; font:15px/1.45 Roboto,"Segoe UI",Arial,sans-serif; padding:20px 16px 40px; }
   .wrap { max-width:1100px; margin:0 auto; }
   h1 { font-size:22px; margin-bottom:6px; }
+  .top { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .lis { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:10px 16px; display:flex; gap:22px; align-items:center; }
+  .lis .n { font-size:28px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
+  .lis .l { font-size:12px; color:var(--muted); margin-top:4px; }
+  .lis .live { width:9px; height:9px; border-radius:50%; background:#ef4444; display:inline-block; margin-right:6px; vertical-align:middle; animation:pl 2s infinite; }
+  @keyframes pl { 50% { opacity:.35 } }
   .sub { color:var(--muted); font-size:14px; margin-bottom:20px; }
   .grid { display:grid; grid-template-columns:340px 1fr; gap:16px; }
   @media (max-width:820px) { .grid { grid-template-columns:1fr; } }
@@ -66,7 +72,14 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Обложки – поправки</h1>
+  <div class="top">
+    <h1>Обложки – поправки</h1>
+    <div class="lis" title="Всички слушатели на потока в момента (приложение, сайт, TuneIn, radio.net…). Обновява се на 10 сек.">
+      <div><div class="n"><span class="live"></span><span id="lisNow">–</span></div><div class="l">слушат сега</div></div>
+      <div><div class="n" id="lisPeak">–</div><div class="l">пик на сървъра</div></div>
+      <div><div class="n" id="lisMax">–</div><div class="l">най-много днес*</div></div>
+    </div>
+  </div>
   <div class="sub">Избираш песен → търсиш в iTunes → избираш правилната обложка → добавяш → изтегляш <code>covers.json</code> и го качваш в GitHub (AlmaOne/cast).
     <b style="color:#fbbf24">Тестово:</b> приложението засега не чете този файл.</div>
 
@@ -143,8 +156,24 @@
       .replace(/&#(\d+);/g, function (_, n) { return cp(Number(n)); }).replace(/&amp;/g, '&');
     function cp(n) { try { return String.fromCodePoint(n); } catch (e) { return ''; } }
   }
+  // ---- Слушатели: Icecast ги дава в същия файл (annotation: Current/Peak Listeners) ----
+  var DKEY = 'alma-listeners-day';
+  function showListeners(xml){
+    var cur = (xml.match(/Current Listeners:\s*(\d+)/) || [])[1], peak = (xml.match(/Peak Listeners:\s*(\d+)/) || [])[1];
+    if (cur == null) return;
+    cur = Number(cur); $('lisNow').textContent = cur; if (peak != null) $('lisPeak').textContent = peak;
+    // Най-много за деня – докато страницата е отворена (пази се в браузъра)
+    var today = new Date().toDateString(), d = {};
+    try { d = JSON.parse(localStorage.getItem(DKEY) || '{}') || {}; } catch (e) {}
+    if (d.day !== today) d = { day: today, max: 0 };
+    if (cur > d.max) { d.max = cur; d.at = Date.now(); }
+    try { localStorage.setItem(DKEY, JSON.stringify(d)); } catch (e) {}
+    var at = new Date(d.at || Date.now());
+    $('lisMax').textContent = d.max; $('lisMax').title = 'в ' + ('0' + at.getHours()).slice(-2) + ':' + ('0' + at.getMinutes()).slice(-2) + ' (*докато страницата е отворена)';
+  }
   function poll() {
     fetch(NOW_PLAYING_URL + '?_=' + Date.now()).then(function(r){ return r.text(); }).then(function(xml){
+      showListeners(xml);
       var track = (xml.match(/<track>([\s\S]*?)<\/track>/) || [])[1] || '';
       var raw = fixEncoding(decodeXml((track.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '')).trim();
       var s = raw ? splitTitle(raw) : null;
