@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Инструменти – Alma Plus</title>
+<!-- Alma Plus: инструменти за наблюдение (поток, слушатели, песни, заглавия). Работи, докато страницата е отворена;
+     данните се пазят в този браузър (localStorage) за последните 8 дни. Нищо не записва другаде. -->
+<style>
+  :root { --bg:#1C0D2B; --card:#2B1740; --line:#432763; --muted:#B9A7CE; --hl:#C7A4EB; --acc:#7B3FB3; --ok:#4ade80; --warn:#fbbf24; --bad:#f87171; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:#fff; font:15px/1.45 Roboto,"Segoe UI",Arial,sans-serif; padding:20px 16px 40px; }
+  .wrap { max-width:1100px; margin:0 auto; }
+  .top { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:14px; }
+  h1 { font-size:22px; }
+  nav { display:flex; gap:6px; }
+  nav a { color:var(--muted); text-decoration:none; font-size:14px; padding:6px 12px; border-radius:8px; border:1px solid var(--line); }
+  nav a.on { color:#fff; background:var(--card); border-color:var(--hl); }
+  .grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+  @media (max-width:900px) { .grid4 { grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:520px) { .grid4 { grid-template-columns:1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; min-width:0; }
+  .card h2 { font-size:13px; color:var(--hl); font-weight:600; margin-bottom:8px; letter-spacing:.02em; }
+  .big { font-size:20px; font-weight:700; display:flex; align-items:center; gap:8px; }
+  .dot { width:10px; height:10px; border-radius:50%; background:var(--muted); flex:none; }
+  .dot.ok { background:var(--ok); } .dot.warn { background:var(--warn); } .dot.bad { background:var(--bad); animation:pl 1s infinite; }
+  @keyframes pl { 50% { opacity:.35 } }
+  .sub { font-size:12.5px; color:var(--muted); margin-top:6px; line-height:1.5; }
+  .sub b { color:#fff; font-weight:600; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+  @media (max-width:900px) { .row2 { grid-template-columns:1fr; } }
+  .box { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:16px; min-width:0; }
+  .box h2 { font-size:15px; color:var(--hl); font-weight:600; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .box h2 small { color:var(--muted); font-weight:400; font-size:12px; }
+  svg text { fill:var(--muted); font-size:11px; }
+  .legend { display:flex; gap:16px; font-size:12px; color:var(--muted); margin-top:6px; flex-wrap:wrap; }
+  .legend i { display:inline-block; width:14px; height:3px; vertical-align:middle; margin-right:5px; border-radius:2px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; color:var(--muted); font-weight:500; padding:6px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  td { padding:6px 8px; border-bottom:1px solid rgba(67,39,99,.5); vertical-align:middle; }
+  td.t { max-width:340px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .th { width:30px; height:30px; border-radius:5px; background:#3a2152 center/cover; display:inline-block; vertical-align:middle; }
+  .th.none { border:1px dashed var(--bad); }
+  .up { color:var(--ok); } .down { color:var(--bad); }
+  .scroll { max-height:420px; overflow:auto; }
+  .tag { font-size:11px; padding:2px 7px; border-radius:10px; white-space:nowrap; }
+  .tag.ok { background:rgba(74,222,128,.15); color:var(--ok); } .tag.bad { background:rgba(248,113,113,.15); color:var(--bad); }
+  .tag.fix { background:rgba(251,191,36,.15); color:var(--warn); } .tag.mut { background:rgba(185,167,206,.12); color:var(--muted); }
+  .top5 li { list-style:none; display:flex; justify-content:space-between; gap:10px; padding:4px 0; border-bottom:1px solid rgba(67,39,99,.5); font-size:13px; }
+  .top5 li span:first-child { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .top5 b { color:var(--hl); }
+  button { background:var(--acc); color:#fff; border:0; border-radius:9px; padding:7px 12px; font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+  button.sec { background:transparent; border:1px solid var(--line); color:var(--muted); font-weight:500; }
+  select { background:#1f0f2f; border:1px solid var(--line); color:#fff; border-radius:8px; padding:5px 8px; font:inherit; font-size:13px; }
+  .q { padding:8px 0; border-bottom:1px solid rgba(67,39,99,.5); font-size:13px; }
+  .q .why { color:var(--warn); font-size:12px; }
+  .q .sug { color:var(--ok); }
+  .msg { color:var(--muted); font-size:13px; }
+  .note { font-size:12px; color:#8e7aa6; margin-top:6px; line-height:1.5; }
+  .alarm { position:fixed; inset:0; border:6px solid var(--bad); pointer-events:none; display:none; animation:pl 1s infinite; }
+  .alarm.on { display:block; }
+</style>
+</head>
+<body>
+<div class="alarm" id="alarm"></div>
+<div class="wrap">
+  <div class="top">
+    <h1>Инструменти</h1>
+    <nav><a href="covers.html">Обложки</a><a href="tools.html" class="on">Инструменти</a></nav>
+  </div>
+
+  <!-- Състояние -->
+  <div class="grid4">
+    <div class="card"><h2>ПОТОК</h2><div class="big"><span class="dot" id="stDot"></span><span id="stText">проверка…</span></div><div class="sub" id="stSub"></div></div>
+    <div class="card"><h2>СЕГА В ЕФИР</h2><div class="big" style="font-size:16px"><span class="dot" id="songDot"></span><span id="songText" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">–</span></div><div class="sub" id="songSub"></div></div>
+    <div class="card"><h2>СЛУШАТЕЛИ</h2><div class="big"><span id="lisNow">–</span><span style="font-size:13px;color:var(--muted);font-weight:400">сега</span></div><div class="sub" id="lisSub"></div></div>
+    <div class="card"><h2>ПОСЛЕДНА ПРОВЕРКА</h2><div class="big"><span class="dot" id="ckDot"></span><span id="ckText">–</span></div><div class="sub" id="ckSub">Жълто/червено = браузърът е „приспал“ страницата.</div></div>
+  </div>
+
+  <div class="box">
+    <h2>Нашите адреси <small id="sitesAt"></small></h2>
+    <div class="grid4" id="sites" style="margin:0"></div>
+    <div class="row2" style="margin:12px 0 0;align-items:center">
+      <div class="note">Проверка при отваряне и на всеки 10 мин. Червена рамка и звук – ако потокът спре (звукът работи, след като щракнеш „Включи звук“ – изискване на браузъра).</div>
+      <div style="text-align:right"><button id="soundBtn" class="sec">🔇 Включи звук при проблем</button></div>
+    </div>
+  </div>
+
+  <!-- Слушатели -->
+  <div class="box">
+    <h2>Слушатели днес <small>на всяка минута, докато страницата е отворена</small>
+      <select id="cmpSel"><option value="1">сравни с вчера</option><option value="7">сравни с преди седмица</option><option value="0">без сравнение</option></select></h2>
+    <div id="chart"></div>
+    <div class="legend"><span><i style="background:#C7A4EB"></i>днес</span><span id="legCmp"><i style="background:#6f5a8a"></i>сравнение</span><span id="chartInfo"></span></div>
+  </div>
+
+  <div class="row2">
+    <div class="box" style="margin:0">
+      <h2>Днес <small id="statDay"></small></h2>
+      <div class="grid4" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px">
+        <div><div class="big" id="sSongs">0</div><div class="sub">песни</div></div>
+        <div><div class="big" id="sCover">–</div><div class="sub">с обложка</div></div>
+        <div><div class="big" id="sRep">0</div><div class="sub">повторени</div></div>
+      </div>
+      <h2 style="font-size:13px">Най-пускани изпълнители</h2><ul class="top5" id="topA"></ul>
+      <h2 style="font-size:13px;margin-top:12px">Повторени песни</h2><ul class="top5" id="topS"></ul>
+    </div>
+    <div class="box" style="margin:0">
+      <h2>Заглавия за проверка <small>правопис и формат</small></h2>
+      <div class="scroll" id="quality" style="max-height:360px"><div class="msg">Още няма.</div></div>
+      <div class="note">„Може би:“ – iTunes има същата песен с много близко име на изпълнителя (правописна грешка от радиото?).</div>
+    </div>
+  </div>
+
+  <!-- Дневник -->
+  <div class="box" style="margin-top:16px">
+    <h2>Дневник на песните
+      <span style="display:flex;gap:8px;align-items:center"><select id="daySel"></select><button class="sec" id="csvBtn">Изтегли CSV</button></span></h2>
+    <div class="scroll"><table><thead><tr><th>час</th><th></th><th>изпълнител – песен</th><th>слушатели</th><th>обложка</th></tr></thead><tbody id="log"></tbody></table></div>
+    <div class="note">Слушатели: в началото → в края на песента (зелено – повече, червено – по-малко). Пази се 8 дни в този браузър.</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var NOW_PLAYING_URL = 'https://a1.vizitec.com:8001/almamater.xspf';
+  var $ = function(id){ return document.getElementById(id); };
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function key(a, t){ return (a + '|' + t).toLowerCase().replace(/\s+/g, ' ').trim(); }
+  function p2(n){ return ('0' + n).slice(-2); }
+  function hm(t){ var d = new Date(t); return p2(d.getHours()) + ':' + p2(d.getMinutes()); }
+  function dayKey(t){ var d = new Date(t || Date.now()); return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); }
+  function load(k, def){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? def : v; } catch (e) { return def; } }
+  function save(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+  // ---- Текущата песен – същото четене като в cast-receiver/index.html ----
+  function splitTitle(raw) {
+    var t = raw.trim(), i = t.indexOf(' - ');
+    return i === -1 ? { artist: '', title: t } : { artist: t.slice(0, i).trim(), title: t.slice(i + 3).trim() };
+  }
+  function fixEncoding(s) {
+    if (!/[\u0080-ÿ]/.test(s) || /[^\u0000-ÿ]/.test(s)) return s;
+    var out = '', i = 0;
+    while (i < s.length) {
+      var b = s.charCodeAt(i), n = 0, cp = 0;
+      if (b < 0x80) { out += s[i++]; continue; }
+      else if (b >= 0xc2 && b <= 0xdf) { n = 1; cp = b & 0x1f; }
+      else if (b >= 0xe0 && b <= 0xef) { n = 2; cp = b & 0x0f; }
+      else if (b >= 0xf0 && b <= 0xf4) { n = 3; cp = b & 0x07; }
+      else return s;
+      if (i + n >= s.length) return s;
+      for (var k = 1; k <= n; k++) { var c = s.charCodeAt(i + k); if ((c & 0xc0) !== 0x80) return s; cp = (cp << 6) | (c & 0x3f); }
+      out += String.fromCodePoint(cp); i += n + 1;
+    }
+    return out;
+  }
+  function decodeXml(s) {
+    return s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+      .replace(/&#x([0-9a-f]+);/gi, function (_, h) { return cp(parseInt(h, 16)); })
+      .replace(/&#(\d+);/g, function (_, n) { return cp(Number(n)); }).replace(/&amp;/g, '&');
+    function cp(n) { try { return String.fromCodePoint(n); } catch (e) { return ''; } }
+  }
+
+  // ---- Автоматичната обложка: точно копие на търсенето от cast-receiver/index.html ----
+  function fetchText(url, ms) {
+    var ctrl = new AbortController(), timer = setTimeout(function () { ctrl.abort(); }, ms || 8000);
+    return fetch(url, { signal: ctrl.signal }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    }).finally(function () { clearTimeout(timer); });
+  }
+  // Обложки – същото търсене като в приложението (src/nowPlaying.ts → findArtwork).
+  // Българска кирилица → латиница: iTunes често пише българските имена на латиница.
+  var TRANSLIT = { 'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l',
+    'м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch',
+    'ш':'sh','щ':'sht','ъ':'a','ь':'y','ю':'yu','я':'ya','ё':'yo','ы':'y','э':'e' };
+  function translit(x) { return x.toLowerCase().replace(/[а-яё]/g, function (c) { return TRANSLIT[c] || c; }); }
+  function hasCyrillic(x) { return /[а-яё]/i.test(x); }
+  // Без ударения, кирилицата на латиница, „ts“→„c“ и „y“→„i“ („Елица“ = Elitsa, „Щурците“ = Shturcite).
+  function norm(x) {
+    var s = x.toLowerCase();
+    try { s = s.normalize('NFKD').replace(/[̀-ͯ]/g, ''); } catch (e) {}
+    return translit(s).replace(/kh/g, 'h').replace(/zh/g, 'j').replace(/dj/g, 'j').replace(/sch/g, 'sh')
+      .replace(/x/g, 'ks').replace(/t[sz]/g, 'c').replace(/[yj]/g, 'i').replace(/(\p{L})\1+/gu, '$1') // двойните букви като една
+      .replace(/([b-df-hj-np-tv-z])i(?=[aou])/g, '$1') // „Любо“ (liubo) = „Lubo“, „Мария“ = „Maria“
+      .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  }
+  function words(x) { return norm(x).split(' ').filter(function (w) { return w.length > 1; }); }
+  function overlap(q, r) {
+    var qa = words(q); if (!qa.length) return 0;
+    var rs = new Set(words(r));
+    return qa.filter(function (w) { return rs.has(w); }).length / qa.length;
+  }
+  // Името без свързващите думи („и“, „e“, „and“, „the“…).
+  function bareName(x) {
+    return norm(x).split(' ').filter(function (w) { return w && ['e', 'i', 'and', 'the', 'et', 'und', 'y'].indexOf(w) === -1; }).join(' ');
+  }
+  // Отделните имена в „А & Б“, „А, Б“, „А feat. Б“, „А и Б“.
+  function people(x) {
+    return x.split(/\s*[,&\/]\s*|\s+(?:feat\.?|ft\.?|featuring|and|x|и)\s+/i).map(norm).filter(Boolean);
+  }
+  // Дали думите needle се срещат последователно (като цели думи) в hay.
+  function hasWordSeq(hay, needle) {
+    if (!needle.length || needle.length > hay.length) return false;
+    for (var i = 0; i + needle.length <= hay.length; i++) {
+      var ok = true;
+      for (var j = 0; j < needle.length; j++) if (hay[i + j] !== needle[j]) { ok = false; break; }
+      if (ok) return true;
+    }
+    return false;
+  }
+  function startsWithWords(hay, needle) {
+    if (!needle.length || needle.length > hay.length) return false;
+    for (var i = 0; i < needle.length; i++) if (hay[i] !== needle[i]) return false;
+    return true;
+  }
+  // Същият изпълнител ли е (само цели имена): 2 – същият, 1 – само участник (стига само ако и песента съвпада), 0 – друг.
+  function artistLevel(artist, rArtist) {
+    var ours = people(artist), theirs = people(rArtist), whole = norm(rArtist), n = norm(artist), b = bareName(artist);
+    if (!n || !whole) return 0;
+    if (n === whole || (!!b && b === bareName(rArtist)) || (ours.length === 1 && theirs[0] === ours[0])) return 2;
+    if (ours.some(function (o) { return o === whole || theirs.indexOf(o) !== -1; }) ||
+      theirs.some(function (t) { return t === n; })) return 1;
+    return 0;
+  }
+  // Заглавието без скобите и „feat.“.
+  function coreTitle(x) { return x.split(/\s*[(\[]|\s+(?:feat\.?|ft\.?)\s+|\s+-\s+/i)[0] || x; }
+  // Същата песен ли е – по цели думи („Love of My Life“ ≠ „Love“, „Mama Maria“ = „Mamma Maria“).
+  function titleMatches(title, rTrack) {
+    var ct = words(coreTitle(title)), cr = words(coreTitle(rTrack));
+    if (!ct.length || !cr.length) return false;
+    if (ct.join(' ') === cr.join(' ')) return true;
+    if (startsWithWords(cr, ct)) return true;
+    if (startsWithWords(ct, cr) && cr.length / ct.length >= 0.6) return true;
+    return overlap(title, rTrack) >= 0.6;
+  }
+  // 2 – същата песен (или изпълнителят, ако имаме само име), 1 – същият изпълнител, друга песен, 0 – не.
+  // Същите правила като в приложението (src/nowPlaying.ts → matchScore).
+  function matchScore(artist, title, rArtist, rTrack) {
+    if (!artist) {
+      // Без изпълнител (име на предаване) – цели думи: „Новини“ ≠ „Ni“, „Sia“ ≠ „Asia“.
+      var tw = words(title), aw = words(rArtist);
+      if (!tw.length || !aw.length) return 0;
+      var ok = tw.join(' ') === aw.join(' ') || (hasWordSeq(aw, tw) && tw.join('').length >= 4) ||
+        (hasWordSeq(tw, aw) && aw.join('').length >= 4);
+      return ok ? 2 : 0;
+    }
+    var lvl = artistLevel(artist, rArtist);
+    if (!lvl) return 0;
+    if (titleMatches(title, rTrack)) return 2;
+    return lvl === 2 ? 1 : 0;
+  }
+  function isOwnAlbum(artist, title, coll) {
+    if (!coll) return true;
+    return artist ? artistLevel(artist, coll) === 2 : matchScore('', title, coll, '') === 2;
+  }
+  var artCache = {};
+  // Опити: американският магазин → българският → на латиница → само заглавието → само изпълнителя.
+  // Спира при същата песен; ако такава няма – обложка от същия изпълнител.
+  function findArtwork(artist, title) {
+    var key = (artist + '|' + title).toLowerCase();
+    if (key in artCache) return Promise.resolve(artCache[key]);
+    var full = (artist + ' ' + title).trim();
+    var tries = [[full, 'us'], [full, 'bg']];
+    if (hasCyrillic(full)) tries.push([translit(full), 'bg']);
+    if (artist && title) { tries.push([title, 'bg']); tries.push([artist, 'bg']); }
+    var fallback = null, failed = false;
+    function attempt(i) {
+      if (i >= tries.length) return Promise.resolve(fallback);
+      var url = 'https://itunes.apple.com/search?term=' + encodeURIComponent(tries[i][0]) +
+        '&media=music&entity=song&limit=10&country=' + tries[i][1];
+      // Неуспешна заявка не изтрива вече намереното – продължаваме със следващия опит.
+      // И отговор, който не е JSON (iTunes отказва с HTML страница), е „неуспешна заявка“.
+      return fetchText(url).then(function (txt) {
+        try { return JSON.parse(txt).results || []; } catch (e) { failed = true; return null; }
+      }, function () { failed = true; return null; })
+        .then(function (results) {
+        if (!results) return attempt(i + 1);
+        var best = null, bestScore = 0, bestRank = 0;
+        results.forEach(function (r) {
+          var sc = matchScore(artist, title, r.artistName || '', r.trackName || '');
+          if (!sc || !r.artworkUrl100) return;
+          // „Обложка от изпълнителя“ – само от негов албум (на сборните корици обикновено е друг човек).
+          var own = isOwnAlbum(artist, title, r.collectionArtistName);
+          if (sc === 1 && !own) return;
+          // Подредба: същата песен > собствен албум > най-малък номер (навсякъде една и съща обложка).
+          var rank = sc * 2 + (own ? 1 : 0);
+          var id = Number(r.collectionId) || Infinity, bestId = best ? (Number(best.collectionId) || Infinity) : Infinity;
+          if (rank > bestRank || (rank === bestRank && id < bestId)) { best = r; bestRank = rank; bestScore = sc; }
+        });
+        // Голяма обложка за телевизора.
+        var big = best ? best.artworkUrl100.replace('100x100bb', '1000x1000bb') : null;
+        if (bestScore === 2) return big;
+        if (big && !fallback) fallback = big;
+        return attempt(i + 1);
+      });
+    }
+    return attempt(0).then(function (url) {
+      if (!url && failed) return undefined; // нищо не намерихме, но и не всичко мина – ще се пробва пак
+      artCache[key] = url;
+      var ak = Object.keys(artCache); if (ak.length > 500) delete artCache[ak[0]]; // паметта – само последните 500
+      return url;
+    }).catch(function () { return undefined; }); // undefined = търсенето не успя (мрежа/iTunes отказа), null = няма обложка
+  }
+
+
+
+
+  // ---- Данни по дни (последните 8) ----
+  var KEEP_DAYS = 8;
+  function daysKept(){ var out = []; for (var i = 0; i < KEEP_DAYS; i++) out.push(dayKey(Date.now() - i * 86400000)); return out; }
+  function prune(prefix){ var keep = daysKept(); for (var i = localStorage.length - 1; i >= 0; i--) { var k = localStorage.key(i); if (k && k.indexOf(prefix) === 0 && keep.indexOf(k.slice(prefix.length)) === -1) localStorage.removeItem(k); } }
+  try { prune('alma-lis-'); prune('alma-log-'); } catch (e) {}
+
+  // ---- Поправки (covers.json) и „без обложка“ – общи с covers.html ----
+  var LIST = {}, listOk = null;
+  function loadList(){
+    return fetch('covers.json?_=' + Date.now()).then(function(r){ if (!r.ok) throw 0; return r.json(); })
+      .then(function(o){ LIST = o && typeof o === 'object' ? o : {}; listOk = true; }, function(){ listOk = false; });
+  }
+  function noteMissing(s){
+    var k = key(s.artist, s.title); if (LIST.hasOwnProperty(k)) return;
+    var MISS = load('alma-covers-missing', {});
+    var m = MISS[k] || { artist: s.artist, title: s.title, count: 0, first: Date.now() };
+    if (!m.last || Date.now() - m.last > 8 * 60000) m.count++;
+    m.last = Date.now(); MISS[k] = m; save('alma-covers-missing', MISS);
+  }
+
+  // ---- Проверка на радиото (на 10 сек) ----
+  var lastOk = 0, lastTry = 0, fails = 0, cur = null, curSince = 0, lastLis = null, peak = null, bitrate = null, ctype = null;
+  function poll(){
+    lastTry = Date.now();
+    fetchText(NOW_PLAYING_URL + '?_=' + Date.now(), 8000).then(function(xml){
+      lastOk = Date.now(); fails = 0;
+      var ann = (xml.match(/<annotation>([\s\S]*?)<\/annotation>/) || [])[1] || '';
+      var c = ann.match(/Current Listeners:\s*(\d+)/), pk = ann.match(/Peak Listeners:\s*(\d+)/), br = ann.match(/Bitrate:\s*(\d+)/), ct = ann.match(/Content Type:\s*([^\s]+)/);
+      lastLis = c ? Number(c[1]) : null; peak = pk ? Number(pk[1]) : null; bitrate = br ? Number(br[1]) : null; ctype = ct ? ct[1] : null;
+      sampleListeners();
+      var track = (xml.match(/<track>([\s\S]*?)<\/track>/) || [])[1] || '';
+      var raw = fixEncoding(decodeXml((track.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '')).trim();
+      var s = raw ? splitTitle(raw) : { artist: '', title: '' };
+      s.raw = raw;
+      var k = key(s.artist, s.title);
+      if (!cur || k !== key(cur.artist, cur.title)) newSong(s);
+      renderStatus();
+    }).catch(function(){ fails++; renderStatus(); });
+  }
+
+  // ---- Песни: дневник ----
+  function logOf(day){ return load('alma-log-' + day, []); }
+  function newSong(s){
+    var now = Date.now(), day = dayKey(now), log = logOf(day), last = log[log.length - 1];
+    // Страницата е презаредена по време на същата песен – продължаваме записа, не добавяме нов ред
+    if (!cur && last && last.end == null && key(last.a, last.t) === key(s.artist, s.title) && now - (last.seen || last.at) < 3 * 60000) {
+      cur = s; curSince = last.at; renderAll(); return;
+    }
+    // края на предишната песен (ако страницата е била затворена – последният миг, в който е видяна)
+    if (last && last.end == null) { last.end = (now - (last.seen || last.at) < 3 * 60000) ? now : (last.seen || last.at); if (last.end === now) last.le = lastLis; }
+    cur = s; curSince = now;
+    if (s.title) {
+      var e = { at: now, seen: now, a: s.artist, t: s.title, raw: s.raw, ls: lastLis, art: 'wait' };
+      var k = key(s.artist, s.title);
+      if (LIST.hasOwnProperty(k)) e.art = LIST[k] ? 'fix:' + LIST[k] : 'fix:';
+      log.push(e); save('alma-log-' + day, log);
+      if (e.art === 'wait') findArtwork(s.artist, s.title).then(function(u){
+        var l2 = logOf(day), x = l2.filter(function(y){ return y.at === e.at; })[0]; if (!x) return;
+        x.art = u === undefined ? 'err' : (u || null); save('alma-log-' + day, l2);
+        if (x.art === null) { noteMissing(s); checkQuality(s, true); }
+        renderAll();
+      });
+      checkQuality(s, false);
+    } else save('alma-log-' + day, log);
+    renderAll();
+  }
+  // слушатели в края на текущата песен се обновяват постоянно
+  function touchEnd(){ var day = dayKey(), log = logOf(day), l = log[log.length - 1]; if (l && l.end == null && cur) { l.le = lastLis; l.seen = Date.now(); save('alma-log-' + day, log); } }
+
+  // ---- Слушатели: по минути ----
+  function sampleListeners(){
+    if (lastLis == null) return;
+    var d = new Date(), day = dayKey(), m = d.getHours() * 60 + d.getMinutes(), arr = load('alma-lis-' + day, {});
+    arr[m] = Math.max(arr[m] || 0, lastLis); save('alma-lis-' + day, arr);
+    touchEnd();
+  }
+
+  // ---- Заглавия: формат и правопис ----
+  var QKEY = 'alma-quality';
+  function addQ(s, why, sug){
+    var Q = load(QKEY, {}), k = key(s.artist, s.title) + '|' + why;
+    Q[k] = { a: s.artist, t: s.title, raw: s.raw, why: why, sug: sug || (Q[k] && Q[k].sug) || '', last: Date.now(), count: ((Q[k] && Q[k].count) || 0) + 1 };
+    // само последните 200
+    var ks = Object.keys(Q).sort(function(x, y){ return Q[y].last - Q[x].last; }); ks.slice(200).forEach(function(x){ delete Q[x]; });
+    save(QKEY, Q); renderQuality();
+  }
+  function lev(a, b){ var m = a.length, n = b.length, d = []; for (var i = 0; i <= m; i++) { d[i] = [i]; } for (var j = 1; j <= n; j++) d[0][j] = j;
+    for (i = 1; i <= m; i++) for (j = 1; j <= n; j++) d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1)); return d[m][n]; }
+  function checkQuality(s, noCover){
+    if (!noCover) {
+      if (s.raw && s.raw.indexOf(' - ') === -1 && s.raw.length > 25) addQ(s, 'няма „Изпълнител - Песен“');
+      if (s.raw && s.raw.length > 6 && s.raw === s.raw.toUpperCase() && /[A-ZА-Я]{4}/.test(s.raw)) addQ(s, 'само главни букви');
+      if (/[�]|Ã|Ð|Ñ/.test(s.raw || '')) addQ(s, 'развалени букви');
+      if (/\s{2,}|^\s|\s$/.test((s.artist || '') + '|' + (s.title || ''))) addQ(s, 'двойни интервали');
+      return;
+    }
+    // Без обложка: има ли в iTunes същата песен с много близък изпълнител?
+    if (!s.artist || !s.title) return;
+    fetchText('https://itunes.apple.com/search?term=' + encodeURIComponent(s.title) + '&media=music&entity=song&limit=25&country=bg').then(function(txt){
+      var res = []; try { res = JSON.parse(txt).results || []; } catch (e) { return; }
+      var na = norm(s.artist), best = null, bd = 99;
+      res.forEach(function(r){
+        if (!titleMatches(s.title, r.trackName || '')) return;
+        var nb = norm(r.artistName || ''); if (!nb || nb === na) return;
+        var d = lev(na, nb), lim = Math.max(2, Math.round(Math.max(na.length, nb.length) * 0.2));
+        if (d <= lim && d < bd) { bd = d; best = r.artistName; }
+      });
+      addQ(s, best ? 'без обложка – вероятно правописна грешка' : 'без обложка', best ? best : '');
+    }).catch(function(){});
+  }
+
+  // ---- Нашите адреси (на 10 мин) ----
+  var SITES = [
+    { n: 'Екран за Cast', u: 'index.html', check: function(t){ var v = (t.match(/diag\('(v\d+)'\)/) || [])[1]; return v ? 'версия ' + v : 'качен'; } },
+    { n: 'Поверителност', u: 'privacy.html', check: function(t){ var v = (t.match(/В сила от ([^<]+)/) || [])[1]; return v ? 'в сила от ' + v.trim() : 'качена'; } },
+    { n: 'covers.json', u: 'covers.json', check: function(t){ var o = JSON.parse(t); return Object.keys(o).length + ' поправки'; } },
+    { n: 'Песента (xspf)', u: NOW_PLAYING_URL, check: function(t){ return /<track>/.test(t) ? 'отговаря' : 'странен отговор'; } }
+  ];
+  function checkSites(){
+    $('sitesAt').textContent = 'проверено в ' + hm(Date.now());
+    var c = $('sites'); c.innerHTML = '';
+    SITES.forEach(function(s){
+      var d = document.createElement('div'); d.className = 'card'; d.style.padding = '10px 12px';
+      d.innerHTML = '<div class="big" style="font-size:14px"><span class="dot"></span>' + esc(s.n) + '</div><div class="sub">проверка…</div>'; c.appendChild(d);
+      var t0 = Date.now();
+      fetchText(s.u + (s.u.indexOf('?') < 0 ? '?' : '&') + '_=' + Date.now(), 10000).then(function(t){
+        var txt; try { txt = s.check(t); } catch (e) { throw new Error('невалиден файл'); }
+        d.querySelector('.dot').className = 'dot ok'; d.querySelector('.sub').textContent = txt + ' · ' + (Date.now() - t0) + ' ms';
+      }).catch(function(e){ d.querySelector('.dot').className = 'dot bad'; d.querySelector('.sub').textContent = 'проблем: ' + (e && e.message || e); });
+    });
+    loadList();
+  }
+
+  // ---- Звук при проблем ----
+  var soundOn = false, actx = null, lastBeep = 0;
+  $('soundBtn').onclick = function(){ soundOn = !soundOn; this.textContent = soundOn ? '🔔 Звук при проблем – вкл.' : '🔇 Включи звук при проблем';
+    if (soundOn && !actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (soundOn) beep(); };
+  function beep(){ if (!actx) return; try { var o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = 880; g.gain.value = .08; o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime + .25); } catch (e) {} }
+
+  // ---- Показване ----
+  function ago(ms){ var s = Math.round(ms / 1000); return s < 60 ? s + ' сек' : Math.round(s / 60) + ' мин'; }
+  function setDot(id, cls){ $(id).className = 'dot ' + (cls || ''); }
+  function renderStatus(){
+    var now = Date.now(), down = fails >= 3 || (lastOk && now - lastOk > 60000);
+    if (!lastOk && !fails) { $('stText').textContent = 'проверка…'; setDot('stDot'); }
+    else if (down) { $('stText').textContent = 'няма връзка'; setDot('stDot', 'bad'); }
+    else { var badBr = bitrate != null && bitrate < 128; $('stText').textContent = badBr ? 'нисък битрейт' : 'излъчва'; setDot('stDot', badBr ? 'warn' : 'ok'); }
+    $('stSub').innerHTML = (bitrate ? '<b>' + bitrate + ' kbps</b> · ' : '') + (ctype ? esc(ctype) : '') + (fails ? ' · неуспешни опити: ' + fails : '');
+    var alarm = down || (bitrate != null && bitrate < 128);
+    $('alarm').classList.toggle('on', !!alarm);
+    if (alarm && soundOn && now - lastBeep > 30000) { lastBeep = now; beep(); setTimeout(beep, 400); }
+    document.title = (alarm ? '⚠ ' : '') + 'Инструменти – Alma Plus';
+    // песента
+    if (cur && cur.title) {
+      var mins = (now - curSince) / 60000;
+      $('songText').textContent = (cur.artist ? cur.artist + ' – ' : '') + cur.title; $('songText').title = cur.raw || '';
+      setDot('songDot', mins > 20 ? 'warn' : 'ok');
+      $('songSub').innerHTML = 'от ' + hm(curSince) + ' (' + ago(now - curSince) + ')' + (mins > 20 ? ' · <b style="color:#fbbf24">същото заглавие над 20 мин – предаване или спрели метаданни?</b>' : '');
+    } else if (lastOk) { $('songText').textContent = 'без заглавие (предаване)'; setDot('songDot', 'warn'); $('songSub').textContent = curSince ? 'от ' + hm(curSince) : ''; }
+    // слушатели
+    if (lastLis != null) { $('lisNow').textContent = lastLis; var mx = maxToday(); $('lisSub').innerHTML = 'пик на сървъра: <b>' + (peak == null ? '–' : peak) + '</b> · днес най-много: <b>' + mx.v + '</b>' + (mx.at != null ? ' в ' + p2(Math.floor(mx.at / 60)) + ':' + p2(mx.at % 60) : ''); }
+  }
+  function maxToday(){ var a = load('alma-lis-' + dayKey(), {}), v = 0, at = null; Object.keys(a).forEach(function(m){ if (a[m] > v) { v = a[m]; at = Number(m); } }); return { v: v, at: at }; }
+  // индикатор „последна проверка“ – всяка секунда
+  setInterval(function(){
+    if (!lastTry) return; var a = Date.now() - (lastOk || lastTry);
+    $('ckText').textContent = 'преди ' + ago(a); setDot('ckDot', a > 90000 ? 'bad' : a > 30000 ? 'warn' : 'ok');
+  }, 1000);
+
+  function chart(){
+    var W = 1040, H = 200, L = 34, B = 22, T = 8, today = load('alma-lis-' + dayKey(), {}), cmpN = Number($('cmpSel').value);
+    var cmp = cmpN ? load('alma-lis-' + dayKey(Date.now() - cmpN * 86400000), {}) : {};
+    var all = Object.keys(today).map(function(k){ return today[k]; }).concat(Object.keys(cmp).map(function(k){ return cmp[k]; }));
+    var max = Math.max(5, Math.ceil((Math.max.apply(null, all.concat([0])) + 1) / 5) * 5);
+    var x = function(m){ return L + (W - L - 6) * m / 1440; }, y = function(v){ return T + (H - T - B) * (1 - v / max); };
+    function path(obj){ var ks = Object.keys(obj).map(Number).sort(function(a, b){ return a - b; }), d = '', prev = -9;
+      ks.forEach(function(m){ d += (m - prev > 5 ? 'M' : 'L') + x(m).toFixed(1) + ',' + y(obj[m]).toFixed(1); prev = m; }); return d; }
+    var g = '';
+    for (var v = 0; v <= max; v += max / 5) g += '<line x1="' + L + '" x2="' + W + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="#432763" stroke-width="1"/><text x="' + (L - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + Math.round(v) + '</text>';
+    for (var h = 0; h <= 24; h += 3) g += '<text x="' + x(h * 60) + '" y="' + (H - 6) + '" text-anchor="' + (h === 0 ? 'start' : h === 24 ? 'end' : 'middle') + '">' + p2(h % 24) + ':00</text>';
+    var nowM = new Date().getHours() * 60 + new Date().getMinutes();
+    g += '<line x1="' + x(nowM) + '" x2="' + x(nowM) + '" y1="' + T + '" y2="' + (H - B) + '" stroke="#7B3FB3" stroke-dasharray="3 3"/>';
+    if (cmpN) g += '<path d="' + path(cmp) + '" fill="none" stroke="#6f5a8a" stroke-width="1.5" stroke-dasharray="4 3"/>';
+    g += '<path d="' + path(today) + '" fill="none" stroke="#C7A4EB" stroke-width="2" stroke-linejoin="round"/>';
+    $('chart').innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" preserveAspectRatio="none" style="height:200px;display:block">' + g + '</svg>';
+    $('legCmp').style.display = cmpN ? '' : 'none';
+    var n = Object.keys(today).length; $('chartInfo').textContent = n ? 'записани ' + n + ' мин от днес' : 'още няма данни – трупат се, докато страницата е отворена';
+  }
+  $('cmpSel').onchange = chart;
+
+  function renderStats(){
+    var day = dayKey(), log = logOf(day).filter(function(e){ return e.t; });
+    $('statDay').textContent = day.split('-').reverse().slice(0, 2).join('.');
+    $('sSongs').textContent = log.length;
+    var done = log.filter(function(e){ return e.art !== 'wait' && e.art !== 'err'; }), withC = done.filter(function(e){ return e.art && e.art !== 'fix:'; });
+    $('sCover').textContent = done.length ? Math.round(withC.length / done.length * 100) + '%' : '–';
+    var A = {}, S = {}; log.forEach(function(e){ if (e.a) A[e.a] = (A[e.a] || 0) + 1; var k = (e.a ? e.a + ' – ' : '') + e.t; S[k] = (S[k] || 0) + 1; });
+    var rep = Object.keys(S).filter(function(k){ return S[k] > 1; }); $('sRep').textContent = rep.length;
+    function list(o, ks, el){ el.innerHTML = ks.length ? ks.slice(0, 5).map(function(k){ return '<li><span>' + esc(k) + '</span><b>' + o[k] + '×</b></li>'; }).join('') : '<li class="msg">–</li>'; }
+    list(A, Object.keys(A).sort(function(a, b){ return A[b] - A[a]; }).filter(function(k){ return A[k] > 1; }), $('topA'));
+    list(S, rep.sort(function(a, b){ return S[b] - S[a]; }), $('topS'));
+  }
+  function artCell(e){
+    if (e.art === 'wait') return '<span class="th"></span>';
+    if (e.art === 'err') return '<span class="th none"></span>';
+    if (typeof e.art === 'string' && e.art.indexOf('fix:') === 0) { var u = e.art.slice(4); return '<span class="th' + (u ? '' : ' none') + '" style="' + (u ? 'background-image:url(' + esc(u.replace('1000x1000bb', '100x100bb')) + ')' : '') + '"></span>'; }
+    return e.art ? '<span class="th" style="background-image:url(' + esc(e.art.replace('1000x1000bb', '100x100bb')) + ')"></span>' : '<span class="th none"></span>';
+  }
+  function artTag(e){
+    if (e.art === 'wait') return '<span class="tag mut">търси…</span>';
+    if (e.art === 'err') return '<span class="tag mut">грешка</span>';
+    if (typeof e.art === 'string' && e.art.indexOf('fix:') === 0) return '<span class="tag fix">в списъка</span>';
+    return e.art ? '<span class="tag ok">авто</span>' : '<span class="tag bad">няма</span>';
+  }
+  function renderLog(){
+    var sel = $('daySel'), cur0 = sel.value, days = daysKept().filter(function(d){ return logOf(d).length; });
+    if (!days.length) days = [dayKey()];
+    sel.innerHTML = days.map(function(d){ return '<option value="' + d + '">' + d.split('-').reverse().join('.') + '</option>'; }).join('');
+    if (cur0 && days.indexOf(cur0) >= 0) sel.value = cur0;
+    var log = logOf(sel.value).filter(function(e){ return e.t; }).slice().reverse();
+    $('log').innerHTML = log.length ? log.map(function(e){
+      var ls = e.ls == null ? '–' : e.ls, le = e.le == null ? '' : e.le, dl = (e.le != null && e.ls != null) ? e.le - e.ls : 0;
+      return '<tr><td>' + hm(e.at) + '</td><td>' + artCell(e) + '</td><td class="t" title="' + esc(e.raw) + '">' + esc((e.a ? e.a + ' – ' : '') + e.t) + '</td>' +
+        '<td>' + ls + (le !== '' ? ' → <span class="' + (dl > 0 ? 'up' : dl < 0 ? 'down' : '') + '">' + le + '</span>' : '') + '</td><td>' + artTag(e) + '</td></tr>';
+    }).join('') : '<tr><td colspan="5" class="msg">Още няма песни за този ден.</td></tr>';
+  }
+  $('daySel').onchange = renderLog;
+  $('csvBtn').onclick = function(){
+    var d = $('daySel').value, rows = [['час', 'изпълнител', 'песен', 'слушатели в началото', 'слушатели в края', 'обложка']];
+    logOf(d).filter(function(e){ return e.t; }).forEach(function(e){
+      var c = e.art === 'wait' || e.art === 'err' ? '' : (typeof e.art === 'string' && e.art.indexOf('fix:') === 0) ? 'поправка' : e.art ? 'авто' : 'няма';
+      rows.push([hm(e.at), e.a, e.t, e.ls == null ? '' : e.ls, e.le == null ? '' : e.le, c]); });
+    var csv = '﻿' + rows.map(function(r){ return r.map(function(v){ v = String(v == null ? '' : v); return /[",;\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(';'); }).join('\n');
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'alma-pesni-' + d + '.csv'; a.click();
+  };
+  function renderQuality(){
+    var Q = load(QKEY, {}), ks = Object.keys(Q).sort(function(a, b){ return Q[b].last - Q[a].last; }), c = $('quality');
+    c.innerHTML = ks.length ? ks.map(function(k){ var q = Q[k];
+      return '<div class="q"><div><b>' + esc((q.a ? q.a + ' – ' : '') + q.t) + '</b> <span class="msg">' + (q.count > 1 ? q.count + '× · ' : '') + hm(q.last) + '</span></div>' +
+        '<div class="why">' + esc(q.why) + (q.sug ? ' · <span class="sug">може би: ' + esc(q.sug) + '</span>' : '') + '</div></div>'; }).join('') : '<div class="msg">Още няма – тук излизат заглавия с проблем.</div>';
+  }
+  function renderAll(){ renderStatus(); chart(); renderStats(); renderLog(); renderQuality(); }
+
+  loadList().then(function(){ renderAll(); });
+  checkSites(); setInterval(checkSites, 10 * 60000);
+  poll(); setInterval(poll, 10000);
+  setInterval(chart, 60000);
+})();
+</script>
+</body>
+</html>

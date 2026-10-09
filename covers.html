@@ -13,6 +13,12 @@
   body { background:var(--bg); color:#fff; font:15px/1.45 Roboto,"Segoe UI",Arial,sans-serif; padding:20px 16px 40px; }
   .wrap { max-width:1100px; margin:0 auto; }
   h1 { font-size:22px; margin-bottom:6px; }
+  nav { display:flex; gap:6px; margin-left:auto; }
+  nav a { color:var(--muted); text-decoration:none; font-size:14px; padding:6px 12px; border-radius:8px; border:1px solid var(--line); }
+  nav a.on { color:#fff; background:var(--card); border-color:var(--hl); }
+  .ck { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .ck i { width:8px; height:8px; border-radius:50%; background:var(--ok); display:inline-block; }
+  .ck.warn i { background:var(--warn); } .ck.bad i { background:var(--bad); }
   .top { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:6px; }
   .lis { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:6px 18px; display:flex; gap:34px; align-items:center; min-width:min(520px,100%); justify-content:space-between; }
   .lis > div { display:flex; align-items:baseline; gap:7px; white-space:nowrap; }
@@ -75,6 +81,7 @@
 <div class="wrap">
   <div class="top">
     <h1>Обложки – поправки</h1>
+    <nav><a href="covers.html" class="on">Обложки</a><a href="tools.html">Инструменти</a></nav>
     <div class="lis" title="Всички слушатели на потока в момента (приложение, сайт, TuneIn, radio.net…). Обновява се на 10 сек.">
       <div><div class="n"><span class="live"></span><span id="lisNow">–</span></div><div class="l">слушат сега</div></div>
       <div><div class="n" id="lisPeak">–</div><div class="l">пик на сървъра</div></div>
@@ -91,6 +98,7 @@
       <div class="miss-h"><h2>Без обложка – за поправка (<span id="missCnt">0</span>)</h2></div>
       <div id="missing"><div class="msg">Още няма.</div></div>
       <div class="hint">Тук остават всички песни без обложка, засечени от страницата – и след презареждане (пазят се в този браузър), докато не ги поправиш или скриеш с ✕. Числото е колко пъти е засечена.</div>
+      <div class="ck" id="ck"><i></i><span id="ckText">последна проверка: –</span></div>
       <div class="hint">Страницата следи радиото на всеки 10 сек и пази песните, докато е отворена (до 30). До всяка е обложката, която приложението и телевизорът намират сами (същото търсене): <b style="color:#4ade80">авто</b> – има, <b style="color:#f87171">няма</b> – ще излезе логото, <b style="color:#fbbf24">в списъка</b> – от поправките.</div>
     </div>
 
@@ -172,8 +180,15 @@
     var at = new Date(d.at || Date.now());
     $('lisMax').textContent = d.max; $('lisMax').title = 'в ' + ('0' + at.getHours()).slice(-2) + ':' + ('0' + at.getMinutes()).slice(-2) + ' (*докато страницата е отворена)';
   }
+  var lastOkAt = 0;
+  setInterval(function(){
+    if (!lastOkAt) return; var a = Math.round((Date.now() - lastOkAt) / 1000);
+    $('ckText').textContent = 'последна проверка: преди ' + (a < 60 ? a + ' сек' : Math.round(a / 60) + ' мин') + (a > 30 ? ' – браузърът е приспал страницата?' : '');
+    $('ck').className = 'ck' + (a > 90 ? ' bad' : a > 30 ? ' warn' : '');
+  }, 1000);
   function poll() {
     fetch(NOW_PLAYING_URL + '?_=' + Date.now()).then(function(r){ return r.text(); }).then(function(xml){
+      lastOkAt = Date.now();
       showListeners(xml);
       var track = (xml.match(/<track>([\s\S]*?)<\/track>/) || [])[1] || '';
       var raw = fixEncoding(decodeXml((track.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '')).trim();
@@ -193,13 +208,15 @@
   function saveMiss(){ try { localStorage.setItem(MKEY, JSON.stringify(MISS)); } catch (e) {} }
   function noteMissing(s){
     var k = key(s.artist, s.title); if (LIST.hasOwnProperty(k)) return;
+    try { MISS = JSON.parse(localStorage.getItem(MKEY) || '{}') || {}; } catch (e) {}
     var m = MISS[k] || { artist: s.artist, title: s.title, count: 0, first: Date.now() };
     if (!m.last || Date.now() - m.last > 8 * 60000) m.count++; // същото пускане (напр. след презареждане) не се брои пак
     m.last = Date.now(); MISS[k] = m; saveMiss(); renderMissing();
   }
   function fmt(t){ var d = new Date(t), p = function(n){ return ('0' + n).slice(-2); }; return p(d.getDate()) + '.' + p(d.getMonth() + 1) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
   function renderMissing(){
-    Object.keys(MISS).forEach(function(k){ if (LIST.hasOwnProperty(k)) delete MISS[k]; }); saveMiss(); // поправените излизат сами
+    try { MISS = JSON.parse(localStorage.getItem(MKEY) || '{}') || {}; } catch (e) {} // и от „Инструменти“
+    Object.keys(MISS).forEach(function(k){ if (LIST.hasOwnProperty(k) || Date.now() - (MISS[k].last || 0) > 30 * 86400000) delete MISS[k]; }); saveMiss(); // поправените и невидените над 30 дни излизат сами
     var keys = Object.keys(MISS).sort(function(a, b){ return (MISS[b].last || 0) - (MISS[a].last || 0); });
     var c = $('missing'); c.innerHTML = ''; $('missCnt').textContent = keys.length;
     if (!keys.length) { c.innerHTML = '<div class="msg">Няма – всички засечени песни имат обложка.</div>'; return; }
@@ -371,6 +388,7 @@
     return attempt(0).then(function (url) {
       if (!url && failed) return undefined; // нищо не намерихме, но и не всичко мина – ще се пробва пак
       artCache[key] = url;
+      var ak = Object.keys(artCache); if (ak.length > 500) delete artCache[ak[0]]; // паметта – само последните 500
       return url;
     }).catch(function () { return undefined; }); // undefined = търсенето не успя (мрежа/iTunes отказа), null = няма обложка
   }
