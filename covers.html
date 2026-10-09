@@ -191,6 +191,7 @@
     var s = x.toLowerCase();
     try { s = s.normalize('NFKD').replace(/[̀-ͯ]/g, ''); } catch (e) {}
     return translit(s).replace(/ts/g, 'c').replace(/y/g, 'i').replace(/(\p{L})\1+/gu, '$1') // двойните букви като една
+      .replace(/([b-df-hj-np-tv-z])i(?=[aou])/g, '$1') // „Любо“ (liubo) = „Lubo“, „Мария“ = „Maria“
       .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   }
   function words(x) { return norm(x).split(' ').filter(function (w) { return w.length > 1; }); }
