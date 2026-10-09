@@ -93,7 +93,7 @@
 
   <div class="grid">
     <div class="box">
-      <h2>Песни от радиото (докато страницата е отворена)</h2>
+      <h2>Песни от радиото</h2>
       <div id="songs"><div class="msg">Чакам песен от радиото…</div></div>
       <div class="miss-h"><h2>Без обложка – за поправка (<span id="missCnt">0</span>)</h2></div>
       <div id="missing"><div class="msg">Още няма.</div></div>
@@ -117,6 +117,7 @@
 
       <h2 style="margin-top:18px">Списък с поправки – <span id="cnt">0</span></h2>
       <div class="msg" id="loadMsg"></div>
+      <div class="msg" id="draftMsg" style="display:none;color:#fbbf24"><span></span> <button class="sec" id="dropDraft" style="padding:3px 9px;font-size:12px;margin-left:6px">Откажи промените</button></div>
       <div class="list" id="list"></div>
       <div class="row" style="margin-top:12px">
         <button onclick="download()">Изтегли covers.json</button>
@@ -134,7 +135,40 @@
   'use strict';
   var NOW_PLAYING_URL = 'https://a1.vizitec.com:8001/almamater.xspf';
   var $ = function(id){ return document.getElementById(id); };
-  var LIST = {}, songs = [], lastKey = '', sel = null;
+  var LIST = {}, BASE = null, songs = [], lastKey = '', sel = null, curLis = null;
+  // ---- Общ дневник с „Инструменти“ (localStorage, по дни) – песните не се губят при преминаване между страниците ----
+  function p2(n){ return ('0' + n).slice(-2); }
+  function dayKey(t){ var d = new Date(t || Date.now()); return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); }
+  function lget(k, def){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? def : v; } catch (e) { return def; } }
+  function lset(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function logOf(day){ return lget('alma-log-' + day, []); }
+  function artOf(e){ if (typeof e.art === 'string' && e.art.indexOf('fix:') === 0) return e.art.slice(4) || null; return e.art; }
+  function loadSongs(){
+    var all = logOf(dayKey(Date.now() - 86400000)).concat(logOf(dayKey())).filter(function(e){ return e.t; });
+    songs = all.slice(-30).reverse().map(function(e){ return { artist: e.a, title: e.t, at: p2(new Date(e.at).getHours()) + ':' + p2(new Date(e.at).getMinutes()), auto: artOf(e), id: e.at }; });
+    var last = all[all.length - 1];
+    if (last && last.end == null && Date.now() - (last.seen || last.at) < 3 * 60000) lastKey = key(last.a, last.t);
+  }
+  function setArt(id, art){ var d = dayKey(id), l = logOf(d), x = l.filter(function(e){ return e.at === id; })[0]; if (x) { x.art = art; lset('alma-log-' + d, l); } }
+  function touchLog(){ var d = dayKey(), l = logOf(d), x = l[l.length - 1]; if (x && x.end == null && key(x.a, x.t) === lastKey) { x.seen = Date.now(); if (curLis != null) x.le = curLis; lset('alma-log-' + d, l); } }
+  function logSong(s, raw){
+    var now = Date.now(), d = dayKey(now), l = logOf(d), x = l[l.length - 1], k = key(s.artist, s.title);
+    if (x && x.end == null && key(x.a, x.t) === k && now - (x.seen || x.at) < 3 * 60000) return x; // вече е записана (от другата страница)
+    if (x && x.end == null) { x.end = now - (x.seen || x.at) < 3 * 60000 ? now : (x.seen || x.at); if (x.end === now && curLis != null) x.le = curLis; }
+    var e = { at: now, seen: now, a: s.artist, t: s.title, raw: raw, ls: curLis, art: 'wait' };
+    l.push(e); lset('alma-log-' + d, l); return e;
+  }
+  // ---- Неизкачени поправки – пазят се, докато не качиш covers.json ----
+  var DRAFT = 'alma-covers-draft';
+  function sortedJson(o){ var r = {}; Object.keys(o || {}).sort().forEach(function(k){ r[k] = o[k]; }); return JSON.stringify(r); }
+  function saveDraft(){ if (BASE && sortedJson(LIST) === sortedJson(BASE)) { try { localStorage.removeItem(DRAFT); } catch (e) {} } else lset(DRAFT, LIST); showDraft(); }
+  function showDraft(){
+    var el = $('draftMsg'); if (!el) return;
+    if (!BASE || sortedJson(LIST) === sortedJson(BASE)) { el.style.display = 'none'; return; }
+    var add = Object.keys(LIST).filter(function(k){ return !BASE.hasOwnProperty(k) || BASE[k] !== LIST[k]; }).length;
+    var del = Object.keys(BASE).filter(function(k){ return !LIST.hasOwnProperty(k); }).length;
+    el.style.display = ''; el.querySelector('span').textContent = '⚠ Неизкачени промени: ' + add + ' нови/сменени' + (del ? ', ' + del + ' махнати' : '') + ' – изтегли covers.json и го качи в GitHub.';
+  }
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
   function key(a, t){ return (a + '|' + t).toLowerCase().replace(/\s+/g, ' ').trim(); }
 
@@ -190,16 +224,19 @@
     fetch(NOW_PLAYING_URL + '?_=' + Date.now()).then(function(r){ return r.text(); }).then(function(xml){
       lastOkAt = Date.now();
       showListeners(xml);
+      var cm = xml.match(/Current Listeners:\s*(\d+)/); curLis = cm ? Number(cm[1]) : null; touchLog();
       var track = (xml.match(/<track>([\s\S]*?)<\/track>/) || [])[1] || '';
       var raw = fixEncoding(decodeXml((track.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '')).trim();
       var s = raw ? splitTitle(raw) : null;
       if (!s || !s.title) return;
       var k = key(s.artist, s.title); if (k === lastKey) return; lastKey = k;
-      var d = new Date(); s.at = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
-      s.auto = 'wait'; songs.unshift(s); songs = songs.slice(0, 30); renderSongs();
-      findArtwork(s.artist, s.title).then(function(u){ s.auto = u === undefined ? 'err' : (u || null); if (s.auto === null) noteMissing(s); renderSongs(); });
+      var e = logSong(s, raw);
+      loadSongs(); renderSongs();
+      var it = songs[0];
+      if (it && (it.auto === 'wait' || it.auto === 'err')) findArtwork(s.artist, s.title).then(function(u){
+        var a = u === undefined ? 'err' : (u || null); setArt(e.at, a); if (a === null) noteMissing(s); loadSongs(); renderSongs(); });
     }).catch(function(){
-      if (!songs.length) $('songs').innerHTML = '<div class="msg">Не мога да прочета песента от радиото. Пиши изпълнител и песен ръчно.</div>';
+      if (!songs.length && !lastOkAt) $('songs').innerHTML = '<div class="msg">Не мога да прочета песента от радиото. Пиши изпълнител и песен ръчно.</div>';
     });
   }
   // ---- Песни без обложка – пазят се в браузъра (localStorage), за да не се пропусне някоя ----
@@ -232,7 +269,7 @@
   }
 
   function renderSongs(){
-    var c = $('songs'); c.innerHTML = '';
+    var c = $('songs'); c.innerHTML = songs.length ? '' : '<div class="msg">Чакам песен от радиото…</div>';
     songs.forEach(function(s, i){
       var d = document.createElement('div'); d.className = 'song';
       var k = key(s.artist, s.title), inList = LIST.hasOwnProperty(k);
@@ -244,7 +281,7 @@
       if (img && img !== 'wait' && img !== 'err') th = '<div class="th" style="background-image:url(' + esc(img.replace('1000x1000bb', '100x100bb')) + ')"></div>';
       else th = '<div class="th' + (img === null || (inList && !img) ? ' none' : '') + '">' + (s.auto === 'wait' ? '…' : 'лого') + '</div>';
       d.innerHTML = th + '<div class="tx"><div class="t">' + esc(s.title) + '</div><div class="a">' + esc(s.artist || '—') + '</div></div>' +
-        (i === 0 ? '<span class="tag now">сега</span>' : '') + tag + '<span class="w">' + s.at + '</span>';
+        (i === 0 && k === lastKey ? '<span class="tag now">сега</span>' : '') + tag + '<span class="w">' + s.at + '</span>';
       d.onclick = function(){ document.querySelectorAll('.song').forEach(function(e){ e.classList.remove('sel'); }); d.classList.add('sel');
         $('artist').value = s.artist; $('title').value = s.title; search(); };
       c.appendChild(d);
@@ -446,7 +483,7 @@
   function setAdd(){ $('addBtn').disabled = !sel; }
   window.addSel = function(){
     var a = $('artist').value.trim(), t = $('title').value.trim(); if (!sel || !t) return;
-    var k = key(a, t); LIST[k] = sel.url; renderList(); renderSongs(); renderMissing(); toast('Добавено: ' + k);
+    var k = key(a, t); LIST[k] = sel.url; saveDraft(); renderList(); renderSongs(); renderMissing(); toast('Добавено: ' + k);
   };
 
   // ---- Списъкът ----
@@ -457,7 +494,7 @@
       var d = document.createElement('div'); d.className = 'item'; var url = LIST[k];
       d.innerHTML = '<div class="th" style="' + (url ? 'background-image:url(' + esc(url.replace('1000x1000bb', '100x100bb')) + ')' : '') + '">' + (url ? '' : 'лого') + '</div>' +
         '<div class="k">' + esc(k) + '</div><button class="sec">Махни</button>';
-      d.querySelector('button').onclick = function(){ delete LIST[k]; renderList(); renderSongs(); };
+      d.querySelector('button').onclick = function(){ delete LIST[k]; saveDraft(); renderList(); renderSongs(); };
       c.appendChild(d);
     });
     $('json').textContent = json();
@@ -469,10 +506,17 @@
 
   // Зарежда текущия covers.json от същото място (GitHub Pages)
   fetch('covers.json?_=' + Date.now()).then(function(r){ if (!r.ok) throw 0; return r.json(); }).then(function(o){
-    LIST = o && typeof o === 'object' ? o : {}; $('loadMsg').textContent = 'Зареден е текущият covers.json от GitHub.'; renderList(); renderSongs(); renderMissing();
-  }).catch(function(){ $('loadMsg').textContent = 'Няма качен covers.json – започваш с празен списък.'; renderList(); });
+    BASE = o && typeof o === 'object' ? o : {};
+    var dr = lget(DRAFT, null);
+    if (dr && sortedJson(dr) !== sortedJson(BASE)) LIST = dr; else { LIST = JSON.parse(JSON.stringify(BASE)); try { localStorage.removeItem(DRAFT); } catch (e) {} }
+    $('loadMsg').textContent = 'Зареден е текущият covers.json от GitHub (' + Object.keys(BASE).length + ').'; showDraft(); renderList(); renderSongs(); renderMissing();
+  }).catch(function(){ BASE = {}; LIST = lget(DRAFT, {}) || {}; $('loadMsg').textContent = 'Няма качен covers.json' + (Object.keys(LIST).length ? ' – показвам неизкачените промени.' : ' – започваш с празен списък.'); showDraft(); renderList(); renderSongs(); });
+  $('dropDraft').onclick = function(){ if (!BASE) return; LIST = JSON.parse(JSON.stringify(BASE)); saveDraft(); renderList(); renderSongs(); renderMissing(); toast('Промените са отказани'); };
 
   renderMissing();
+  loadSongs(); renderSongs();
+  // песни без отговор за обложката (страницата е била затворена по време на търсенето) – търсим пак
+  songs.slice(0, 5).forEach(function(it){ if (it.auto === 'wait' || it.auto === 'err') findArtwork(it.artist, it.title).then(function(u){ var a = u === undefined ? 'err' : (u || null); setArt(it.id, a); if (a === null) noteMissing(it); loadSongs(); renderSongs(); }); });
   poll(); setInterval(poll, 10000);
 })();
 </script>
