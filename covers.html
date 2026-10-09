@@ -30,6 +30,9 @@
   .tag.fix { background:rgba(251,191,36,.15); color:var(--warn); }
   .tag.ok { background:rgba(74,222,128,.15); color:var(--ok); }
   .tag.bad { background:rgba(248,113,113,.15); color:var(--bad); }
+  .miss-h { display:flex; align-items:center; justify-content:space-between; margin:18px 0 6px; }
+  .miss-h h2 { margin:0; }
+  .miss .x { background:transparent; border:1px solid var(--line); color:var(--muted); padding:3px 8px; font-size:12px; font-weight:500; border-radius:8px; }
   .tag.now { background:rgba(239,68,68,.18); color:#fca5a5; }
   .row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
   input { flex:1; min-width:140px; background:#1f0f2f; border:1px solid var(--line); color:#fff; border-radius:9px; padding:9px 11px; font:inherit; }
@@ -71,6 +74,9 @@
     <div class="box">
       <h2>Песни от радиото (докато страницата е отворена)</h2>
       <div id="songs"><div class="msg">Чакам песен от радиото…</div></div>
+      <div class="miss-h"><h2>Без обложка – за поправка (<span id="missCnt">0</span>)</h2></div>
+      <div id="missing"><div class="msg">Още няма.</div></div>
+      <div class="hint">Тук остават всички песни без обложка, засечени от страницата – и след презареждане (пазят се в този браузър), докато не ги поправиш или скриеш с ✕. Числото е колко пъти е засечена.</div>
       <div class="hint">Страницата следи радиото на всеки 10 сек и пази песните, докато е отворена (до 30). До всяка е обложката, която приложението и телевизорът намират сами (същото търсене): <b style="color:#4ade80">авто</b> – има, <b style="color:#f87171">няма</b> – ще излезе логото, <b style="color:#fbbf24">в списъка</b> – от поправките.</div>
     </div>
 
@@ -146,11 +152,38 @@
       var k = key(s.artist, s.title); if (k === lastKey) return; lastKey = k;
       var d = new Date(); s.at = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
       s.auto = 'wait'; songs.unshift(s); songs = songs.slice(0, 30); renderSongs();
-      findArtwork(s.artist, s.title).then(function(u){ s.auto = u === undefined ? 'err' : (u || null); renderSongs(); });
+      findArtwork(s.artist, s.title).then(function(u){ s.auto = u === undefined ? 'err' : (u || null); if (s.auto === null) noteMissing(s); renderSongs(); });
     }).catch(function(){
       if (!songs.length) $('songs').innerHTML = '<div class="msg">Не мога да прочета песента от радиото. Пиши изпълнител и песен ръчно.</div>';
     });
   }
+  // ---- Песни без обложка – пазят се в браузъра (localStorage), за да не се пропусне някоя ----
+  var MKEY = 'alma-covers-missing', MISS = {};
+  try { MISS = JSON.parse(localStorage.getItem(MKEY) || '{}') || {}; } catch (e) { MISS = {}; }
+  function saveMiss(){ try { localStorage.setItem(MKEY, JSON.stringify(MISS)); } catch (e) {} }
+  function noteMissing(s){
+    var k = key(s.artist, s.title); if (LIST.hasOwnProperty(k)) return;
+    var m = MISS[k] || { artist: s.artist, title: s.title, count: 0, first: Date.now() };
+    if (!m.last || Date.now() - m.last > 8 * 60000) m.count++; // същото пускане (напр. след презареждане) не се брои пак
+    m.last = Date.now(); MISS[k] = m; saveMiss(); renderMissing();
+  }
+  function fmt(t){ var d = new Date(t), p = function(n){ return ('0' + n).slice(-2); }; return p(d.getDate()) + '.' + p(d.getMonth() + 1) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  function renderMissing(){
+    Object.keys(MISS).forEach(function(k){ if (LIST.hasOwnProperty(k)) delete MISS[k]; }); saveMiss(); // поправените излизат сами
+    var keys = Object.keys(MISS).sort(function(a, b){ return (MISS[b].last || 0) - (MISS[a].last || 0); });
+    var c = $('missing'); c.innerHTML = ''; $('missCnt').textContent = keys.length;
+    if (!keys.length) { c.innerHTML = '<div class="msg">Няма – всички засечени песни имат обложка.</div>'; return; }
+    keys.forEach(function(k){
+      var m = MISS[k], d = document.createElement('div'); d.className = 'song miss';
+      d.innerHTML = '<div class="th none">лого</div><div class="tx"><div class="t">' + esc(m.title) + '</div><div class="a">' + esc(m.artist || '—') + '</div></div>' +
+        '<span class="w">' + m.count + '× · ' + fmt(m.last) + '</span><button class="x" title="Скрий">✕</button>';
+      d.querySelector('.x').onclick = function(e){ e.stopPropagation(); delete MISS[k]; saveMiss(); renderMissing(); };
+      d.onclick = function(){ document.querySelectorAll('.song').forEach(function(e){ e.classList.remove('sel'); }); d.classList.add('sel');
+        $('artist').value = m.artist; $('title').value = m.title; search(); };
+      c.appendChild(d);
+    });
+  }
+
   function renderSongs(){
     var c = $('songs'); c.innerHTML = '';
     songs.forEach(function(s, i){
@@ -365,7 +398,7 @@
   function setAdd(){ $('addBtn').disabled = !sel; }
   window.addSel = function(){
     var a = $('artist').value.trim(), t = $('title').value.trim(); if (!sel || !t) return;
-    var k = key(a, t); LIST[k] = sel.url; renderList(); renderSongs(); toast('Добавено: ' + k);
+    var k = key(a, t); LIST[k] = sel.url; renderList(); renderSongs(); renderMissing(); toast('Добавено: ' + k);
   };
 
   // ---- Списъкът ----
@@ -388,9 +421,10 @@
 
   // Зарежда текущия covers.json от същото място (GitHub Pages)
   fetch('covers.json?_=' + Date.now()).then(function(r){ if (!r.ok) throw 0; return r.json(); }).then(function(o){
-    LIST = o && typeof o === 'object' ? o : {}; $('loadMsg').textContent = 'Зареден е текущият covers.json от GitHub.'; renderList(); renderSongs();
+    LIST = o && typeof o === 'object' ? o : {}; $('loadMsg').textContent = 'Зареден е текущият covers.json от GitHub.'; renderList(); renderSongs(); renderMissing();
   }).catch(function(){ $('loadMsg').textContent = 'Няма качен covers.json – започваш с празен списък.'; renderList(); });
 
+  renderMissing();
   poll(); setInterval(poll, 10000);
 })();
 </script>
