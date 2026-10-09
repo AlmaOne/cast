@@ -190,7 +190,8 @@
   function norm(x) {
     var s = x.toLowerCase();
     try { s = s.normalize('NFKD').replace(/[̀-ͯ]/g, ''); } catch (e) {}
-    return translit(s).replace(/zh/g, 'j').replace(/ts/g, 'c').replace(/y/g, 'i').replace(/(\p{L})\1+/gu, '$1') // двойните букви като една
+    return translit(s).replace(/kh/g, 'h').replace(/zh/g, 'j').replace(/dj/g, 'j').replace(/sch/g, 'sh')
+      .replace(/x/g, 'ks').replace(/t[sz]/g, 'c').replace(/[yj]/g, 'i').replace(/(\p{L})\1+/gu, '$1') // двойните букви като една
       .replace(/([b-df-hj-np-tv-z])i(?=[aou])/g, '$1') // „Любо“ (liubo) = „Lubo“, „Мария“ = „Maria“
       .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   }
