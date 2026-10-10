@@ -80,7 +80,7 @@
   </div>
 
   <div class="box">
-    <h2>Нашите адреси <small id="sitesAt"></small></h2>
+    <h2>Състояние <small id="sitesAt"></small></h2>
     <div class="grid4" id="sites" style="margin:0"></div>
     <div class="row2" style="margin:12px 0 0;align-items:center">
       <div class="note">Проверка при отваряне и на всеки 10 мин. Червена рамка и звук – ако потокът спре (звукът работи, след като щракнеш „Включи звук“ – изискване на браузъра).</div>
@@ -426,19 +426,19 @@
     }).catch(function(){});
   }
 
-  // ---- Нашите адреси (на 10 мин) ----
+  // ---- Състояние (на 10 мин) ----
   var SITES = [
-    { n: 'Екран за Cast', u: 'index.html', check: function(t){ var v = (t.match(/diag\('(v\d+)'\)/) || [])[1]; return v ? 'версия ' + v : 'качен'; } },
-    { n: 'Поверителност', u: 'privacy.html', check: function(t){ var v = (t.match(/В сила от ([^<]+)/) || [])[1]; return v ? 'в сила от ' + v.trim() : 'качена'; } },
-    { n: 'covers.json', u: 'covers.json', check: function(t){ var o = JSON.parse(t); return Object.keys(o).length + ' поправки'; } },
-    { n: 'Песента (xspf)', u: NOW_PLAYING_URL, check: function(t){ return /<track>/.test(t) ? 'отговаря' : 'странен отговор'; } }
+    { n: 'Екран за Cast', f: 'index.html', u: 'index.html', check: function(t){ var v = (t.match(/diag\('(v\d+)'\)/) || [])[1]; return v ? 'версия ' + v : 'качен'; } },
+    { n: 'Политика за поверителност', f: 'privacy.html', u: 'privacy.html', check: function(t){ var v = (t.match(/В сила от ([^<]+)/) || [])[1]; return v ? 'в сила от ' + v.trim() : 'качена'; } },
+    { n: 'Поправки на обложки', f: 'covers.json', u: 'covers.json', check: function(t){ var o = JSON.parse(t); return Object.keys(o).length + ' поправки'; } },
+    { n: 'Сървър Vizitec', f: 'xspf', u: NOW_PLAYING_URL, check: function(t){ return /<track>/.test(t) ? 'отговаря' : 'странен отговор'; } }
   ];
   function checkSites(){
     $('sitesAt').textContent = 'проверено в ' + hm(Date.now());
     var c = $('sites'); c.innerHTML = '';
     SITES.forEach(function(s){
       var d = document.createElement('div'); d.className = 'card'; d.style.padding = '10px 12px';
-      d.innerHTML = '<div class="big" style="font-size:14px"><span class="dot"></span>' + esc(s.n) + '</div><div class="sub">проверка…</div>'; c.appendChild(d);
+      d.innerHTML = '<div class="big" style="font-size:14px"><span class="dot"></span>' + esc(s.n) + '</div>' + (s.f ? '<div style="font-size:12px;color:var(--muted);margin:2px 0 0 18px">' + esc(s.f) + '</div>' : '') + '<div class="sub">проверка…</div>'; c.appendChild(d);
       var t0 = Date.now();
       fetchText(s.u + (s.u.indexOf('?') < 0 ? '?' : '&') + '_=' + Date.now(), 10000).then(function(t){
         var txt; try { txt = s.check(t); } catch (e) { throw new Error('невалиден файл'); }
