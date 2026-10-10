@@ -91,7 +91,7 @@
 <main id="main" class="paused">
   <img id="art" class="logo" alt="">
   <div class="info">
-    <div class="live"><span class="dot"></span><span id="liveText" class="lt">НА ЖИВО</span></div>
+    <div class="live"><span class="dot"></span><span id="liveText" class="lt">СЕГА</span></div>
     <div id="title">Радио Alma Mater</div>
     <div id="artist">88 MHz · София</div>
     <div class="station off" id="station"><img id="smallLogo" alt=""><span id="stationText">Радио Alma Mater · 88 MHz · София</span></div>
@@ -137,12 +137,12 @@
     var t = pad2(d.getHours()) + ' ' + pad2(d.getMinutes());
     if ($('clock').textContent !== t) $('clock').textContent = t;
   }
-  // На всеки 15 мин: „НА ЖИВО“ (и при дълго предаване – заглавието) се превъртат, логото се сменя.
+  // На всеки 15 мин: „СЕГА“ (и при дълго предаване – заглавието) се превъртат, логото се сменя.
   function rollClock() {
     rollRows();
     if (longTalk()) swapLogo(); // само при дълго предаване – не и при дълга песен без обложка
   }
-  // „НА ЖИВО“ (или „СПРЯНО“) – буквите се превъртат като на табло и спират на мястото си.
+  // „СЕГА“ (или „СПРЯНО“) – буквите се превъртат като на табло и спират на мястото си.
   // Буквите на един ред се превъртат като на табло и спират на мястото си.
   // final() дава какво да пише накрая (ако междувременно надписът се е сменил – не го пипаме).
   function flapText(el, final) {
@@ -171,12 +171,12 @@
     })(i);
     return 90 * text.length + 1300; // приблизително колко трае
   }
-  // Ред по ред: „НА ЖИВО“ → заглавието → „88 MHz · София“.
+  // Ред по ред: „СЕГА“ → заглавието → „88 MHz · София“.
   // Заглавието и изпълнителят се превъртат САМО при дълго предаване (без песен над 10 мин, логото на екрана).
   // Докато върви песен – името ѝ и изпълнителят не се пипат.
   function longTalk() { return !lastKey && Date.now() - lastSongChange > 10 * 60000 && $('art').classList.contains('logo'); }
   function rollRows() {
-    var t1 = flapText($('liveText'), function () { return $('main').classList.contains('paused') ? 'СПРЯНО' : 'НА ЖИВО'; }) || 0;
+    var t1 = flapText($('liveText'), function () { return $('main').classList.contains('paused') ? 'СПРЯНО' : 'СЕГА'; }) || 0;
     if (!longTalk()) return;
     setTimeout(function () {
       if (!longTalk()) return; // междувременно е дошла песен – не пипаме името ѝ
@@ -221,7 +221,7 @@
   setInterval(drift, 60000);
 
   // Редът „+ Радио Alma Mater · 88 MHz · София“ – 32 сек при нова песен, после изчезва.
-  // Без песен заглавието и без това е „Радио Alma Mater“ – редът не се показва. „НА ЖИВО“ остава винаги.
+  // Без песен заглавието и без това е „Радио Alma Mater“ – редът не се показва. „СЕГА“ остава винаги.
   var stationTimer = null, flapTimers = [];
   var STATION_LINE = STATION + ' · ' + FREQ;
   var FLAP_POOL = 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЮЯABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -484,7 +484,7 @@
   function startPolling() { if (!pollTimer) { poll(); pollTimer = setInterval(poll, POLL_MS); } }
   function setPlaying(on) {
     $('main').classList.toggle('paused', !on);
-    $('liveText').textContent = on ? 'НА ЖИВО' : 'СПРЯНО';
+    $('liveText').textContent = on ? 'СЕГА' : 'СПРЯНО';
   }
 
   // ---- Google Cast ----
@@ -636,7 +636,7 @@
       diagLog.push(t + ' ' + name);
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
-    diag('v26');
+    diag('v27');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
