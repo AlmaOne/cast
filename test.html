@@ -35,10 +35,9 @@
   <div class="box">
     <h2>Alma Plus · Cast App ID 233A5E7D</h2>
     <p>Отвори тази страница в <b>Google Chrome</b> на компютър в същата Wi‑Fi мрежа като устройството (телевизор, Nest Hub…), <b>без VPN</b>.
-    1) „Избери устройство“ (или иконата за Cast). 2) „Пусни радиото“.</p>
+    1) Натисни иконата за Cast и избери устройството. 2) Натисни „Пусни радиото“.</p>
     <div class="row">
       <google-cast-launcher></google-cast-launcher>
-      <button id="pick" class="sec">📺 Избери устройство</button>
       <button id="play">Пусни радиото</button>
       <button id="stop" class="sec">Спри</button>
     </div>
@@ -62,11 +61,6 @@
       log('Състояние: ' + e.castState + (e.castState === 'NOT_CONNECTED' ? ' – има устройство, избери го' : ''));
       if (e.castState === 'NO_DEVICES_AVAILABLE') log(HELP);
     });
-    // Бутон, който отваря прозореца на Chrome за избор – и когато иконата е скрита
-    document.getElementById('pick').onclick = function () {
-      ctx.requestSession().then(function () { log('Свързано ✓ – натисни „Пусни радиото“'); },
-        function (err) { log(err === 'cancel' ? 'Изборът е отказан' : 'Не се свърза: ' + err + (ctx.getCastState() === 'NO_DEVICES_AVAILABLE' ? ' – ' + HELP : '')); });
-    };
     ctx.addEventListener(cast.framework.CastContextEventType.SESSION_STATE_CHANGED, function (e) {
       log('Сесия: ' + e.sessionState + (e.errorCode ? ' (грешка ' + e.errorCode + ')' : ''));
     });
