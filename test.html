@@ -24,9 +24,8 @@
   button { background:var(--acc); color:#fff; border:0; border-radius:9px; padding:9px 14px; font:inherit; font-weight:600; cursor:pointer; }
   button.sec { background:transparent; border:1px solid var(--line); color:var(--muted); font-weight:500; }
   /* Звук на устройството (вариант C – минимално) */
-  .vol { margin-top:14px; padding:12px 14px; border:1px solid var(--line); border-radius:12px; background:rgba(255,255,255,.03); display:flex; align-items:center; gap:12px; flex-wrap:wrap; transition:opacity .2s; }
-  .vol .lbl { font-size:13px; color:var(--hl); font-weight:600; min-width:150px; }
-  .vol .lbl small { display:block; color:var(--muted); font-weight:400; font-size:12px; }
+  .vol { flex:1; min-width:300px; display:flex; align-items:center; gap:10px; margin-left:10px; padding-left:16px; border-left:1px solid var(--line); transition:opacity .2s; }
+  .vol .dev { font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px; }
   .vol .spk { width:36px; height:36px; padding:0; border:0; background:transparent; color:var(--muted); display:inline-flex; align-items:center; justify-content:center; border-radius:9px; cursor:pointer; }
   .vol .spk:hover { color:#fff; background:rgba(255,255,255,.06); }
   .vol .spk svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
@@ -51,12 +50,12 @@
       <google-cast-launcher></google-cast-launcher>
       <button id="play">Пусни радиото</button>
       <button id="stop" class="sec">Спри</button>
-    </div>
-    <div class="vol off" id="vol">
-      <div class="lbl">Звук на устройството<small id="volDev">няма свързано устройство</small></div>
-      <button class="spk" id="volMute" title="Без звук"></button>
-      <input type="range" id="volRng" min="0" max="100" step="1" value="0">
-      <span class="pct" id="volPct">–</span>
+      <div class="vol off" id="vol" title="Звук на устройството">
+        <button class="spk" id="volMute" title="Без звук"></button>
+        <input type="range" id="volRng" min="0" max="100" step="1" value="0">
+        <span class="pct" id="volPct">–</span>
+        <span class="dev" id="volDev">няма свързано устройство</span>
+      </div>
     </div>
     <div id="log"></div>
   </div>
