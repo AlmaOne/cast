@@ -41,7 +41,8 @@
   td { padding:6px 8px; border-bottom:1px solid rgba(67,39,99,.5); vertical-align:middle; }
   td.t { max-width:340px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .th { width:30px; height:30px; border-radius:5px; background:#3a2152 center/cover; display:inline-block; vertical-align:middle; }
-  .th.none { border:1px dashed var(--bad); }
+  /* Без обложка – логото на радиото (както в приложението), с тънка червена рамка */
+  .th.none { background:#2B1740 url(data:image/png;base64,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) center/cover no-repeat; outline:1px dashed var(--bad); outline-offset:1px; }
   .up { color:var(--ok); } .down { color:var(--bad); }
   .scroll { max-height:420px; overflow:auto; }
   .tag { font-size:11px; padding:2px 7px; border-radius:10px; white-space:nowrap; }
@@ -107,7 +108,7 @@
       <h2 style="font-size:13px;margin-top:12px">Повторени песни</h2><ul class="top5" id="topS"></ul>
     </div>
     <div class="box" style="margin:0">
-      <h2>Заглавия за проверка <small>правопис и формат</small></h2>
+      <h2>Заглавия за проверка (<span id="qCnt">0</span>) <small>правопис и формат · ✕ = скрий</small></h2>
       <div class="scroll" id="quality" style="max-height:360px"><div class="msg">Още няма.</div></div>
       <div class="note">„Може би:“ – iTunes има същата песен с много близко име на изпълнителя (правописна грешка от радиото?).</div>
     </div>
@@ -354,7 +355,9 @@
     var now = Date.now(), day = dayKey(now), log = logOf(day), last = log[log.length - 1];
     // Страницата е презаредена по време на същата песен – продължаваме записа, не добавяме нов ред
     if (!cur && last && last.end == null && key(last.a, last.t) === key(s.artist, s.title) && now - (last.seen || last.at) < 3 * 60000) {
-      cur = s; curSince = last.at; renderAll(); return;
+      cur = s; curSince = last.at;
+      if (last.art === 'wait' || last.art === 'err') resolveArt(day, last.at, s); // търсенето е прекъснато при презареждане
+      renderAll(); return;
     }
     // края на предишната песен (ако страницата е била затворена – последният миг, в който е видяна)
     if (last && last.end == null) { last.end = (now - (last.seen || last.at) < 3 * 60000) ? now : (last.seen || last.at); if (last.end === now) last.le = lastLis; }
@@ -364,15 +367,18 @@
       var k = key(s.artist, s.title);
       if (LIST.hasOwnProperty(k)) e.art = LIST[k] ? 'fix:' + LIST[k] : 'fix:';
       log.push(e); save('alma-log-' + day, log);
-      if (e.art === 'wait') findArtwork(s.artist, s.title).then(function(u){
-        var l2 = logOf(day), x = l2.filter(function(y){ return y.at === e.at; })[0]; if (!x) return;
-        x.art = u === undefined ? 'err' : (u || null); save('alma-log-' + day, l2);
-        if (x.art === null) { noteMissing(s); checkQuality(s, true); }
-        renderAll();
-      });
+      if (e.art === 'wait') resolveArt(day, e.at, s);
       checkQuality(s, false);
     } else save('alma-log-' + day, log);
     renderAll();
+  }
+  function resolveArt(day, at, s){
+    findArtwork(s.artist, s.title).then(function(u){
+      var l2 = logOf(day), x = l2.filter(function(y){ return y.at === at; })[0]; if (!x) return;
+      x.art = u === undefined ? 'err' : (u || null); save('alma-log-' + day, l2);
+      if (x.art === null) { noteMissing(s); checkQuality(s, true); }
+      renderAll();
+    });
   }
   // слушатели в края на текущата песен се обновяват постоянно
   function touchEnd(){ var day = dayKey(), log = logOf(day), l = log[log.length - 1]; if (l && l.end == null && cur) { l.le = lastLis; l.seen = Date.now(); save('alma-log-' + day, log); } }
@@ -391,7 +397,7 @@
     var Q = load(QKEY, {}), k = key(s.artist, s.title) + '|' + why;
     Q[k] = { a: s.artist, t: s.title, raw: s.raw, why: why, sug: sug || (Q[k] && Q[k].sug) || '', last: Date.now(), count: ((Q[k] && Q[k].count) || 0) + 1 };
     // само последните 200
-    var ks = Object.keys(Q).sort(function(x, y){ return Q[y].last - Q[x].last; }); ks.slice(200).forEach(function(x){ delete Q[x]; });
+    var ks = Object.keys(Q).sort(function(x, y){ return Q[y].last - Q[x].last; }); ks.forEach(function(x, i){ if (i >= 200 || Date.now() - Q[x].last > 60 * 86400000) delete Q[x]; }); // до 200, най-много 60 дни
     save(QKEY, Q); renderQuality();
   }
   function lev(a, b){ var m = a.length, n = b.length, d = []; for (var i = 0; i <= m; i++) { d[i] = [i]; } for (var j = 1; j <= n; j++) d[0][j] = j;
@@ -544,11 +550,19 @@
     var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'alma-pesni-' + d + '.csv'; a.click();
   };
   function renderQuality(){
-    var Q = load(QKEY, {}), ks = Object.keys(Q).sort(function(a, b){ return Q[b].last - Q[a].last; }), c = $('quality');
+    var Q = load(QKEY, {}), changed = false;
+    // „без обложка“, които вече са поправени в covers.json, излизат сами
+    Object.keys(Q).forEach(function(k){ var q = Q[k]; if (/без обложка/.test(q.why) && LIST.hasOwnProperty(key(q.a, q.t))) { delete Q[k]; changed = true; } });
+    if (changed) save(QKEY, Q);
+    var ks = Object.keys(Q).sort(function(a, b){ return Q[b].last - Q[a].last; }), c = $('quality');
+    $('qCnt').textContent = ks.length;
     c.innerHTML = ks.length ? ks.map(function(k){ var q = Q[k];
-      return '<div class="q"><div><b>' + esc((q.a ? q.a + ' – ' : '') + q.t) + '</b> <span class="msg">' + (q.count > 1 ? q.count + '× · ' : '') + hm(q.last) + '</span></div>' +
-        '<div class="why">' + esc(q.why) + (q.sug ? ' · <span class="sug">може би: ' + esc(q.sug) + '</span>' : '') + '</div></div>'; }).join('') : '<div class="msg">Още няма – тук излизат заглавия с проблем.</div>';
+      return '<div class="q" style="display:flex;gap:10px;align-items:flex-start"><div style="flex:1;min-width:0"><div><b>' + esc((q.a ? q.a + ' – ' : '') + q.t) + '</b> <span class="msg">' + (q.count > 1 ? q.count + '× · ' : '') + fmtDay(q.last) + '</span></div>' +
+        '<div class="why">' + esc(q.why) + (q.sug ? ' · <span class="sug">може би: ' + esc(q.sug) + '</span>' : '') + '</div></div>' +
+        '<button class="sec qx" data-k="' + esc(k) + '" title="Скрий" style="padding:2px 8px;font-size:12px">✕</button></div>'; }).join('') : '<div class="msg">Още няма – тук излизат заглавия с проблем.</div>';
+    c.querySelectorAll('.qx').forEach(function(b){ b.onclick = function(){ var Q2 = load(QKEY, {}); delete Q2[b.getAttribute('data-k')]; save(QKEY, Q2); renderQuality(); }; });
   }
+  function fmtDay(t){ var d = new Date(t), today = dayKey() === dayKey(t); return (today ? '' : p2(d.getDate()) + '.' + p2(d.getMonth() + 1) + ' ') + hm(t); }
   function renderAll(){ renderStatus(); chart(); renderStats(); renderLog(); renderQuality(); }
 
   loadList().then(function(){ renderAll(); });

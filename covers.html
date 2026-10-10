@@ -34,7 +34,8 @@
   .song { display:flex; align-items:center; gap:10px; padding:8px; border-radius:10px; cursor:pointer; }
   .song:hover, .song.sel { background:rgba(199,164,235,.12); }
   .song .th { width:44px; height:44px; border-radius:6px; flex:none; background:#3a2152 center/cover; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--muted); text-align:center; line-height:1.2; }
-  .song .th.none { border:1px dashed var(--bad); color:var(--bad); }
+  /* Без обложка – логото на радиото (както в приложението), с тънка червена рамка */
+  .song .th.none, .item .th.none { background:#2B1740 url(data:image/png;base64,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) center/cover no-repeat; outline:1px dashed var(--bad); outline-offset:1px; color:transparent; }
   .song .tx { min-width:0; flex:1; }
   .song .t { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .song .a { color:var(--muted); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -259,7 +260,7 @@
     if (!keys.length) { c.innerHTML = '<div class="msg">Няма – всички засечени песни имат обложка.</div>'; return; }
     keys.forEach(function(k){
       var m = MISS[k], d = document.createElement('div'); d.className = 'song miss';
-      d.innerHTML = '<div class="th none">лого</div><div class="tx"><div class="t">' + esc(m.title) + '</div><div class="a">' + esc(m.artist || '—') + '</div></div>' +
+      d.innerHTML = '<div class="th none"></div><div class="tx"><div class="t">' + esc(m.title) + '</div><div class="a">' + esc(m.artist || '—') + '</div></div>' +
         '<span class="w">' + m.count + '× · ' + fmt(m.last) + '</span><button class="x" title="Скрий">✕</button>';
       d.querySelector('.x').onclick = function(e){ e.stopPropagation(); delete MISS[k]; saveMiss(); renderMissing(); };
       d.onclick = function(){ document.querySelectorAll('.song').forEach(function(e){ e.classList.remove('sel'); }); d.classList.add('sel');
@@ -279,7 +280,7 @@
       else if (s.auto === 'err') tag = '<span class="tag bad">грешка</span>';
       else tag = s.auto ? '<span class="tag ok">авто</span>' : '<span class="tag bad">няма</span>';
       if (img && img !== 'wait' && img !== 'err') th = '<div class="th" style="background-image:url(' + esc(img.replace('1000x1000bb', '100x100bb')) + ')"></div>';
-      else th = '<div class="th' + (img === null || (inList && !img) ? ' none' : '') + '">' + (s.auto === 'wait' ? '…' : 'лого') + '</div>';
+      else th = '<div class="th' + (img === null || (inList && !img) ? ' none' : '') + '">' + (s.auto === 'wait' ? '…' : '') + '</div>';
       d.innerHTML = th + '<div class="tx"><div class="t">' + esc(s.title) + '</div><div class="a">' + esc(s.artist || '—') + '</div></div>' +
         (i === 0 && k === lastKey ? '<span class="tag now">сега</span>' : '') + tag + '<span class="w">' + s.at + '</span>';
       d.onclick = function(){ document.querySelectorAll('.song').forEach(function(e){ e.classList.remove('sel'); }); d.classList.add('sel');
@@ -492,7 +493,7 @@
     $('cnt').textContent = keys.length;
     keys.forEach(function(k){
       var d = document.createElement('div'); d.className = 'item'; var url = LIST[k];
-      d.innerHTML = '<div class="th" style="' + (url ? 'background-image:url(' + esc(url.replace('1000x1000bb', '100x100bb')) + ')' : '') + '">' + (url ? '' : 'лого') + '</div>' +
+      d.innerHTML = '<div class="th' + (url ? '' : ' none') + '" style="' + (url ? 'background-image:url(' + esc(url.replace('1000x1000bb', '100x100bb')) + ')' : '') + '">' + '' + '</div>' +
         '<div class="k">' + esc(k) + '</div><button class="sec">Махни</button>';
       d.querySelector('button').onclick = function(){ delete LIST[k]; saveDraft(); renderList(); renderSongs(); };
       c.appendChild(d);
