@@ -300,11 +300,12 @@
   function hasCyrillic(x) { return /[а-яё]/i.test(x); }
   // Без ударения, кирилицата на латиница, „ts“→„c“ и „y“→„i“ („Елица“ = Elitsa, „Щурците“ = Shturcite).
   function norm(x) {
-    var s = x.toLowerCase();
+    var s = x.toLowerCase().replace(/(\p{L})!(?=\p{L})/gu, '$1i'); // „P!nk“ = „Pink“
     try { s = s.normalize('NFKD').replace(/[̀-ͯ]/g, ''); } catch (e) {}
     return translit(s).replace(/kh/g, 'h').replace(/zh/g, 'j').replace(/dj/g, 'j').replace(/sch/g, 'sh')
       .replace(/x/g, 'ks').replace(/t[sz]/g, 'c').replace(/[yj]/g, 'i').replace(/(\p{L})\1+/gu, '$1') // двойните букви като една
       .replace(/([b-df-hj-np-tv-z])i(?=[aou])/g, '$1') // „Любо“ (liubo) = „Lubo“, „Мария“ = „Maria“
+      .replace(/ue(?![\p{L}\p{N}])/gu, 'u') // „Авеню“ (avenu) = „Avenue“
       .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   }
   function words(x) { return norm(x).split(' ').filter(function (w) { return w.length > 1; }); }
@@ -633,7 +634,7 @@
       diagLog.push(t + ' ' + name);
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
-    diag('v24');
+    diag('v25');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
