@@ -11,6 +11,8 @@
   * { box-sizing:border-box; margin:0; padding:0; }
   html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); color:var(--text);
     font-family: Roboto, "Google Sans", "Segoe UI", Arial, sans-serif; }
+  /* Обикновена кирилица навсякъде: шрифтовете на Google при lang="bg" пишат „Радио“ като „Paguo“. */
+  html, body, * { font-feature-settings:"locl" 0; }
   /* Размитата обложка като фон – като в приложението. */
   #bg { position:fixed; inset:-8vmin; background-size:cover; background-position:center;
     filter:blur(6vmin) saturate(1.2); opacity:0; transition:opacity 1.2s ease; }
@@ -634,7 +636,7 @@
       diagLog.push(t + ' ' + name);
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
-    diag('v25');
+    diag('v26');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
