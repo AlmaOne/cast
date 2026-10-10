@@ -23,6 +23,17 @@
   google-cast-launcher { display:inline-block; width:40px; height:40px; --connected-color:#10B981; --disconnected-color:#fff; cursor:pointer; }
   button { background:var(--acc); color:#fff; border:0; border-radius:9px; padding:9px 14px; font:inherit; font-weight:600; cursor:pointer; }
   button.sec { background:transparent; border:1px solid var(--line); color:var(--muted); font-weight:500; }
+  /* Звук на устройството (вариант C – минимално) */
+  .vol { margin-top:14px; padding:12px 14px; border:1px solid var(--line); border-radius:12px; background:rgba(255,255,255,.03); display:flex; align-items:center; gap:12px; flex-wrap:wrap; transition:opacity .2s; }
+  .vol .lbl { font-size:13px; color:var(--hl); font-weight:600; min-width:150px; }
+  .vol .lbl small { display:block; color:var(--muted); font-weight:400; font-size:12px; }
+  .vol .spk { width:36px; height:36px; padding:0; border:0; background:transparent; color:var(--muted); display:inline-flex; align-items:center; justify-content:center; border-radius:9px; cursor:pointer; }
+  .vol .spk:hover { color:#fff; background:rgba(255,255,255,.06); }
+  .vol .spk svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .vol input[type=range] { flex:1; min-width:160px; accent-color:#C7A4EB; }
+  .vol .pct { font-variant-numeric:tabular-nums; font-weight:700; width:48px; text-align:right; }
+  .vol.muted input[type=range] { opacity:.4; }
+  .vol.off { opacity:.45; pointer-events:none; }
   #log { margin-top:14px; background:#140920; border:1px solid var(--line); border-radius:10px; padding:12px; font:12.5px/1.5 Consolas,Menlo,monospace; color:#e9dcf7; white-space:pre-wrap; min-height:140px; }
 </style>
 </head>
@@ -40,6 +51,12 @@
       <google-cast-launcher></google-cast-launcher>
       <button id="play">Пусни радиото</button>
       <button id="stop" class="sec">Спри</button>
+    </div>
+    <div class="vol off" id="vol">
+      <div class="lbl">Звук на устройството<small id="volDev">няма свързано устройство</small></div>
+      <button class="spk" id="volMute" title="Без звук"></button>
+      <input type="range" id="volRng" min="0" max="100" step="1" value="0">
+      <span class="pct" id="volPct">–</span>
     </div>
     <div id="log"></div>
   </div>
@@ -66,7 +83,7 @@
     });
     document.getElementById('play').onclick = function () {
       var s = ctx.getCurrentSession();
-      if (!s) { log('Първо се свържи с телевизора от иконата.'); return; }
+      if (!s) { log('Първо се свържи с устройството от иконата за Cast.'); return; }
       var mi = new chrome.cast.media.MediaInfo(STREAM, 'audio/aac'); // потокът е AAC – като в приложението
       mi.streamType = chrome.cast.media.StreamType.LIVE;
       var md = new chrome.cast.media.MusicTrackMediaMetadata();
@@ -88,6 +105,60 @@
       }
       load();
     };
+    // ---- Звук на устройството: общото ниво на свързаното устройство (Chromecast, Nest Hub…) ----
+    var $v = function (id) { return document.getElementById(id); };
+    var SPK = '<path d="M11 5 6 9H3v6h3l5 4V5z"/>';
+    var ICON = { off: SPK + '<path d="m16 9 5 6M21 9l-5 6"/>', low: SPK + '<path d="M15.5 9.5a3.5 3.5 0 0 1 0 5"/>',
+      high: SPK + '<path d="M15.5 9.5a3.5 3.5 0 0 1 0 5"/><path d="M18.5 6.5a8 8 0 0 1 0 11"/>' };
+    var vol = 0, muted = false, dragging = false, sentAt = 0, hooked = null;
+    function paintVol() {
+      var lvl = muted || vol === 0 ? 'off' : vol < 50 ? 'low' : 'high';
+      $v('volMute').innerHTML = '<svg viewBox="0 0 24 24">' + ICON[lvl] + '</svg>';
+      $v('volMute').title = muted ? 'Включи звука' : 'Без звук';
+      if (!dragging) $v('volRng').value = vol;
+      $v('volPct').textContent = $v('vol').classList.contains('off') ? '–' : vol + '%';
+      $v('vol').classList.toggle('muted', muted);
+    }
+    function volFromSession(s) {
+      if (!s) { $v('vol').classList.add('off'); $v('volDev').textContent = 'няма свързано устройство'; $v('volPct').textContent = '–'; return; }
+      $v('vol').classList.remove('off');
+      try { $v('volDev').textContent = (s.getCastDevice() && s.getCastDevice().friendlyName) || 'свързано устройство'; } catch (e) {}
+      var v = s.getVolume(); if (v != null) vol = Math.round(v * 100);
+      var m = s.isMute(); if (m != null) muted = !!m;
+      paintVol();
+      if (hooked !== s) {
+        hooked = s;
+        s.addEventListener(cast.framework.SessionEventType.VOLUME_CHANGED, function (e) {
+          var nv = Math.round(e.volume * 100), nm = !!e.isMute, changed = nv !== vol || nm !== muted;
+          vol = nv; muted = nm; paintVol();
+          if (changed && Date.now() - sentAt > 1500) log('Звукът е сменен от друго място: ' + (nm ? 'без звук' : nv + '%'));
+        });
+      }
+    }
+    $v('volRng').oninput = function () { dragging = true; vol = +this.value; paintVol(); };
+    // Към устройството пращаме чак при пускане на плъзгача – не при всяко помръдване
+    $v('volRng').onchange = function () {
+      dragging = false; var s = ctx.getCurrentSession(); if (!s) return;
+      vol = +this.value; sentAt = Date.now();
+      s.setVolume(vol / 100).then(function () { log('Звук: ' + vol + '%'); }, function (err) { log('Звукът не се смени: ' + err); });
+      if (muted && vol > 0) { muted = false; s.setMute(false); }
+      paintVol();
+    };
+    $v('volMute').onclick = function () {
+      var s = ctx.getCurrentSession(); if (!s) return;
+      muted = !muted; sentAt = Date.now(); paintVol();
+      s.setMute(muted).then(function () { log(muted ? 'Без звук' : 'Със звук'); }, function (err) { log('Не се смени: ' + err); });
+    };
+    ctx.addEventListener(cast.framework.CastContextEventType.SESSION_STATE_CHANGED, function (e) {
+      var S = cast.framework.SessionState;
+      if (e.sessionState === S.SESSION_STARTED || e.sessionState === S.SESSION_RESUMED) {
+        volFromSession(ctx.getCurrentSession());
+        log('Звук на устройството: ' + (muted ? 'без звук' : vol + '%'));
+      } else if (e.sessionState === S.SESSION_ENDED) { hooked = null; volFromSession(null); }
+    });
+    volFromSession(ctx.getCurrentSession());
+    paintVol();
+
     document.getElementById('stop').onclick = function () { var s = ctx.getCurrentSession(); if (s) s.endSession(true); };
   };
 </script>
