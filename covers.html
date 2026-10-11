@@ -306,9 +306,11 @@
   function hasCyrillic(x) { return /[а-яё]/i.test(x); }
   // Без ударения, кирилицата на латиница, „ts“→„c“ и „y“→„i“ („Елица“ = Elitsa, „Щурците“ = Shturcite).
   function norm(x) {
-    var s = x.toLowerCase().replace(/(\p{L})!(?=\p{L})/gu, '$1i'); // „P!nk“ = „Pink“
+    var s = x.toLowerCase().replace(/(\p{L})!(?=\p{L})/gu, '$1i') // „P!nk“ = „Pink“
+      .replace(/(\p{L})\.(?=\p{L})/gu, '$1'); // „M.C.“ = „MC“, „T.E.“ = „ТЕ“
     try { s = s.normalize('NFKD').replace(/[̀-ͯ]/g, ''); } catch (e) {}
     return translit(s).replace(/kh/g, 'h').replace(/zh/g, 'j').replace(/dj/g, 'j').replace(/sch/g, 'sh')
+      .replace(/ch/g, 'h').replace(/(\p{L})th/gu, '$1t') // „Захариев“ = Zachariev, „Рут“ = Ruth
       .replace(/x/g, 'ks').replace(/t[sz]/g, 'c').replace(/[yj]/g, 'i').replace(/(\p{L})\1+/gu, '$1') // двойните букви като една
       .replace(/([b-df-hj-np-tv-z])i(?=[aou])/g, '$1') // „Любо“ (liubo) = „Lubo“, „Мария“ = „Maria“
       .replace(/ue(?![\p{L}\p{N}])/gu, 'u') // „Авеню“ (avenu) = „Avenue“
@@ -344,7 +346,12 @@
     return true;
   }
   // Същият изпълнител ли е (само цели имена): 2 – същият, 1 – само участник (стига само ако и песента съвпада), 0 – друг.
+  // Името без псевдоним в скоби: „Plamen Bonev (De La Bona)“ = „Пламен Бонев“.
+  function noAlias(x) { return x.replace(/\s*\([^)]*\)/g, '').trim() || x; }
+  // Колко букви/цифри има (без двойните да се броят за една): „Kool“ = 4.
+  function rawLen(x) { return x.replace(/[^\p{L}\p{N}]+/gu, '').length; }
   function artistLevel(artist, rArtist) {
+    artist = noAlias(artist); rArtist = noAlias(rArtist);
     var ours = people(artist), theirs = people(rArtist), whole = norm(rArtist), n = norm(artist), b = bareName(artist);
     if (!n || !whole) return 0;
     if (n === whole || (!!b && b === bareName(rArtist)) || (ours.length === 1 && theirs[0] === ours[0])) return 2;
@@ -370,8 +377,8 @@
       // Без изпълнител (име на предаване) – цели думи: „Новини“ ≠ „Ni“, „Sia“ ≠ „Asia“.
       var tw = words(title), aw = words(rArtist);
       if (!tw.length || !aw.length) return 0;
-      var ok = tw.join(' ') === aw.join(' ') || (hasWordSeq(aw, tw) && tw.join('').length >= 4) ||
-        (hasWordSeq(tw, aw) && aw.join('').length >= 4);
+      var ok = tw.join(' ') === aw.join(' ') || (hasWordSeq(aw, tw) && rawLen(title) >= 4) ||
+        (hasWordSeq(tw, aw) && rawLen(rArtist) >= 4);
       return ok ? 2 : 0;
     }
     var lvl = artistLevel(artist, rArtist);
@@ -381,7 +388,7 @@
   }
   function isOwnAlbum(artist, title, coll) {
     if (!coll) return true;
-    return artist ? artistLevel(artist, coll) === 2 : matchScore('', title, coll, '') === 2;
+    return artist ? artistLevel(artist, coll) >= 1 : matchScore('', title, coll, '') === 2;
   }
   var artCache = {};
   // Опити: американският магазин → българският → на латиница → само заглавието → само изпълнителя.
