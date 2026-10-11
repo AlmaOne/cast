@@ -69,6 +69,9 @@
   .own-side { flex:1; min-width:220px; display:flex; flex-direction:column; gap:10px; font-size:13px; color:var(--muted); }
   .own-side input[type=range] { width:100%; accent-color:var(--hl); }
   .own-side code { color:#fff; word-break:break-all; }
+  .dls { display:flex; flex-direction:column; gap:6px; }
+  a.dl { display:block; background:#1f0f2f; border:1px solid var(--hl); color:#fff; border-radius:9px; padding:8px 11px; text-decoration:none; font-weight:600; }
+  a.dl:hover { background:#3a2152; } a.dl small { color:var(--muted); font-weight:400; }
   .tag-own { font-size:11px; color:var(--hl); border:1px solid var(--line); border-radius:6px; padding:1px 6px; margin-left:6px; }
   .res .warn { font-size:11px; color:var(--warn); margin-top:2px; }
   .res.logo .c { display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:13px; text-align:center; padding:10px; }
@@ -574,16 +577,22 @@
     cv.addEventListener('pointerup', function(){ drag = null; }); cv.addEventListener('pointercancel', function(){ drag = null; });
     cv.addEventListener('wheel', function(e){ if (!own.img) return; e.preventDefault(); ownZoomTo(own.zoom * (e.deltaY < 0 ? 1.08 : 1 / 1.08)); }, { passive: false });
   })();
-  function saveJpg(N, name){ return new Promise(function(res){ var cv = document.createElement('canvas'); cv.width = cv.height = N; ownDraw(cv, N);
-    cv.toBlob(function(b){ var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; document.body.appendChild(a); a.click(); a.remove(); res(b.size); }, 'image/jpeg', 0.88); }); }
+  function jpgBlob(N){ return new Promise(function(res){ var cv = document.createElement('canvas'); cv.width = cv.height = N; ownDraw(cv, N);
+    cv.toBlob(function(b){ res(b); }, 'image/jpeg', 0.88); }); }
+  function dlLink(blob, name){ return '<a class="dl" href="' + URL.createObjectURL(blob) + '" download="' + esc(name) + '">⬇ ' + esc(name) + ' <small>(' + Math.round(blob.size / 1024) + ' KB)</small></a>'; }
   $('ownSave').onclick = function(){
     var a = $('artist').value.trim(), t = $('title').value.trim();
     if (!own.img) return; if (!t) { toast('Първо напиши (или избери отляво) изпълнител и песен'); return; }
     var b = ownNames(), big = 'https://almaone.github.io/cast/covers/' + b + '-1000.jpg';
-    saveJpg(1000, b + '-1000.jpg').then(function(s1){ return new Promise(function(r){ setTimeout(r, 400); }).then(function(){ return saveJpg(500, b + '-500.jpg'); }).then(function(s2){
-      if (addEntry(a, t, big)) $('ownInfo').innerHTML = 'Изтеглени: <b>' + esc(b) + '-1000.jpg</b> (' + Math.round(s1 / 1024) + ' KB) и <b>' + esc(b) + '-500.jpg</b> (' + Math.round(s2 / 1024) + ' KB). Качи ги в covers/ и после covers.json.' +
-        '<br><span style="color:var(--muted)">Ако браузърът попита „да изтегли ли няколко файла“ – разреши.</span>';
-    }); });
+    Promise.all([jpgBlob(1000), jpgBlob(500)]).then(function(bl){
+      if (!addEntry(a, t, big)) return;
+      // Двата файла – като бутони (Chrome понякога спира второто автоматично изтегляне).
+      $('ownInfo').innerHTML = '<div style="color:#fff;margin-bottom:6px">Готови са – изтегли <b>двата</b> файла:</div>' +
+        '<div class="dls">' + dlLink(bl[0], b + '-1000.jpg') + dlLink(bl[1], b + '-500.jpg') + '</div>' +
+        '<div style="margin-top:6px">После ги качи в covers/ и качи covers.json.</div>';
+      // Опит и автоматично – ако Chrome попита „Да изтегли ли няколко файла“ (иконка в адресната лента) – „Разреши“.
+      var links = $('ownInfo').querySelectorAll('a.dl'); links[0].click(); setTimeout(function(){ links[1].click(); }, 300);
+    });
   };
 
   // ---- Списъкът ----
