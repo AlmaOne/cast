@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
+<meta name="alma-version" content="v1"><!-- при промяна: +1 тук и долу („Инструменти · версия …“) -->
 <title>Инструменти – Alma Plus</title>
 <!-- Alma Plus: инструменти за наблюдение (поток, слушатели, песни, заглавия). Работи, докато страницата е отворена;
      данните се пазят в този браузър (localStorage): песните – 30 дни (старите дни свити, без адресите на обложките), слушателите по минути – 8 дни. Нищо не записва другаде. -->
@@ -51,6 +52,7 @@
   .top5 li { list-style:none; display:flex; justify-content:space-between; gap:10px; padding:4px 0; border-bottom:1px solid rgba(67,39,99,.5); font-size:13px; }
   .top5 li span:first-child { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .top5 b { color:var(--hl); }
+  .ver { margin-top:14px; font-size:12px; color:var(--muted); opacity:.75; text-align:right; }
   button { background:var(--acc); color:#fff; border:0; border-radius:9px; padding:7px 12px; font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
   button.sec { background:transparent; border:1px solid var(--line); color:var(--muted); font-weight:500; }
   select { background:#1f0f2f; border:1px solid var(--line); color:#fff; border-radius:8px; padding:5px 8px; font:inherit; font-size:13px; }
@@ -68,7 +70,7 @@
 <div class="wrap">
   <div class="top">
     <h1>Инструменти</h1>
-    <nav><a href="covers.html">Обложки</a><a href="tools.html" class="on">Инструменти</a><a href="test.html">Тест на Cast</a><a href="index.html" target="_blank" title="Екранът, който показва устройството при Cast – телевизор, Nest Hub, Smart Clock… (отваря се в нов прозорец; звук няма – пуска се само през Cast)">Екран на Cast ↗</a></nav>
+    <nav><a href="covers.html">Обложки</a><a href="tools.html" class="on">Инструменти</a><a href="test.html">Пусни на устройство</a><a href="index.html" target="_blank" title="Екранът, който показва устройството при Cast – телевизор, Nest Hub, Smart Clock… (отваря се в нов прозорец; звук няма – пуска се само през Cast)">Екранът на телевизора ↗</a></nav>
   </div>
 
   <!-- Състояние -->
@@ -86,6 +88,7 @@
       <div class="note">Проверка при отваряне и на всеки 10 мин. Червена рамка и звук – ако потокът спре (звукът работи, след като щракнеш „Включи звук“ – изискване на браузъра).</div>
       <div style="text-align:right"><button id="soundBtn" class="sec"></button></div>
     </div>
+    <div class="note" id="versions" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">Версии в GitHub: проверявам…</div>
   </div>
 
   <!-- Слушатели -->
@@ -122,6 +125,7 @@
     <div class="scroll"><table><thead><tr><th>час</th><th></th><th>изпълнител – песен</th><th>слушатели</th><th>обложка</th></tr></thead><tbody id="log"></tbody></table></div>
     <div class="note">Слушатели: в началото → в края на песента (зелено – повече, червено – по-малко). Пазят се 30 дни в този браузър (по-старите от днес – без картинките, етикетите остават).</div>
   </div>
+  <div class="ver">Инструменти · версия v1</div>
 </div>
 
 <script>
@@ -451,7 +455,7 @@
 
   // ---- Състояние (на 10 мин) ----
   var SITES = [
-    { n: 'Екран за Cast', f: 'index.html', u: 'index.html', check: function(t){ var v = (t.match(/diag\('(v\d+)'\)/) || [])[1]; return v ? 'версия ' + v : 'качен'; } },
+    { n: 'Екранът на телевизора', f: 'index.html', u: 'index.html', check: function(t){ var v = (t.match(/diag\('(v\d+)'\)/) || [])[1]; return v ? 'версия ' + v : 'качен'; } },
     { n: 'Политика за поверителност', f: 'privacy.html', u: 'privacy.html', check: function(t){ var v = (t.match(/В сила от ([^<]+)/) || [])[1]; return v ? 'в сила от ' + v.trim() : 'качена'; } },
     { n: 'Поправки на обложки', f: 'covers.json', u: 'covers.json', check: function(t){ var o = JSON.parse(t); return Object.keys(o).length + ' поправки'; }, after: checkCoverImages },
     { n: 'Сървър Vizitec', f: 'xspf', u: NOW_PLAYING_URL, check: function(t){ return /<track>/.test(t) ? 'отговаря' : 'странен отговор'; } }
@@ -483,7 +487,21 @@
       sub.style.cursor = 'help';
     });
   }
+  // Кои версии са качени в GitHub: covers/tools/test – <meta name="alma-version">, екранът на телевизора – diag('vN').
+  var MY_VERSION = (document.querySelector('meta[name="alma-version"]') || {}).content || '?';
+  function checkVersions(){
+    var pages = [['Обложки', 'covers.html', metaVer], ['Инструменти', 'tools.html', metaVer], ['Пусни на устройство', 'test.html', metaVer],
+                 ['Екранът на телевизора', 'index.html', function(t){ return (t.match(/diag\('(v\d+)'\)/) || [])[1]; }]];
+    function metaVer(t){ return (t.match(/<meta name="alma-version" content="([^"]+)"/) || [])[1]; }
+    Promise.all(pages.map(function(p){ return fetchText(p[1] + '?_=' + Date.now(), 10000).then(function(t){ return p[2](t) || 'без номер'; }, function(){ return 'няма'; }); }))
+      .then(function(v){
+        var parts = pages.map(function(p, i){ return esc(p[0]) + ' <b style="color:#fff">' + esc(v[i]) + '</b>'; });
+        var stale = v[1] !== MY_VERSION ? ' · <span style="color:var(--warn)">тази отворена страница е ' + esc(MY_VERSION) + ' – презареди</span>' : '';
+        $('versions').innerHTML = 'Версии в GitHub: ' + parts.join(' · ') + stale;
+      });
+  }
   function checkSites(){
+    checkVersions();
     $('sitesAt').textContent = 'проверено в ' + hm(Date.now());
     var c = $('sites'); c.innerHTML = '';
     SITES.forEach(function(s){

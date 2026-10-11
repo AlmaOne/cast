@@ -3,13 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Cast тест – Alma Plus</title>
+<title>Пусни на устройство – Alma Plus</title>
+<meta name="alma-version" content="v1"><!-- при промяна: +1 тук и долу („Пусни на устройство · версия …“) -->
 <style>
   /* Същият вид като covers.html и tools.html */
   :root { --bg:#1C0D2B; --card:#2B1740; --line:#432763; --muted:#B9A7CE; --hl:#C7A4EB; --acc:#7B3FB3; }
   * { box-sizing:border-box; margin:0; padding:0; }
   body { background:var(--bg); color:#fff; font:15px/1.45 Roboto,"Segoe UI",Arial,sans-serif; padding:20px 16px 40px; }
   .wrap { max-width:1100px; margin:0 auto; }
+  .ver { margin-top:14px; font-size:12px; color:var(--muted); opacity:.75; text-align:right; }
   .top { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:14px; }
   h1 { font-size:22px; }
   nav { display:flex; gap:6px; flex-wrap:wrap; }
@@ -39,8 +41,8 @@
 <body>
 <div class="wrap">
   <div class="top">
-    <h1>Тест на Cast</h1>
-    <nav><a href="covers.html">Обложки</a><a href="tools.html">Инструменти</a><a href="test.html" class="on">Тест на Cast</a><a href="index.html" target="_blank" title="Екранът, който показва устройството при Cast – телевизор, Nest Hub, Smart Clock… (отваря се в нов прозорец; звук няма – пуска се само през Cast)">Екран на Cast ↗</a></nav>
+    <h1>Пусни на устройство</h1>
+    <nav><a href="covers.html">Обложки</a><a href="tools.html">Инструменти</a><a href="test.html" class="on">Пусни на устройство</a><a href="index.html" target="_blank" title="Екранът, който показва устройството при Cast – телевизор, Nest Hub, Smart Clock… (отваря се в нов прозорец; звук няма – пуска се само през Cast)">Екранът на телевизора ↗</a></nav>
   </div>
   <div class="box">
     <h2>Alma Plus · Cast App ID 233A5E7D</h2>
@@ -59,6 +61,7 @@
     </div>
     <div id="log"></div>
   </div>
+  <div class="ver">Пусни на устройство · версия v1</div>
 </div>
 
 <script>
