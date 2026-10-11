@@ -70,7 +70,7 @@
 <div class="wrap">
   <div class="top">
     <h1>Инструменти</h1>
-    <nav><a href="covers.html">Обложки</a><a href="tools.html" class="on">Инструменти</a><a href="test.html">Пусни на устройство</a><a href="index.html" target="_blank" title="Екранът, който показва устройството при Cast – телевизор, Nest Hub, Smart Clock… (отваря се в нов прозорец; звук няма – пуска се само през Cast)">Екранът на телевизора ↗</a></nav>
+    <nav><a href="covers.html">Обложки</a><a href="tools.html" class="on">Инструменти</a><a href="play.html">Пусни на устройство</a><a href="index.html" target="_blank" title="Екранът, който показва устройството при Cast – телевизор, Nest Hub, Smart Clock… (отваря се в нов прозорец; звук няма – пуска се само през Cast)">Екранът на телевизора ↗</a></nav>
   </div>
 
   <!-- Състояние -->
@@ -490,7 +490,7 @@
   // Кои версии са качени в GitHub: covers/tools/test – <meta name="alma-version">, екранът на телевизора – diag('vN').
   var MY_VERSION = (document.querySelector('meta[name="alma-version"]') || {}).content || '?';
   function checkVersions(){
-    var pages = [['Обложки', 'covers.html', metaVer], ['Инструменти', 'tools.html', metaVer], ['Пусни на устройство', 'test.html', metaVer],
+    var pages = [['Обложки', 'covers.html', metaVer], ['Инструменти', 'tools.html', metaVer], ['Пусни на устройство', 'play.html', metaVer],
                  ['Екранът на телевизора', 'index.html', function(t){ return (t.match(/diag\('(v\d+)'\)/) || [])[1]; }]];
     function metaVer(t){ return (t.match(/<meta name="alma-version" content="([^"]+)"/) || [])[1]; }
     Promise.all(pages.map(function(p){ return fetchText(p[1] + '?_=' + Date.now(), 10000).then(function(t){ return p[2](t) || 'без номер'; }, function(){ return 'няма'; }); }))
