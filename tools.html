@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Инструменти – Alma Plus</title>
 <!-- Alma Plus: инструменти за наблюдение (поток, слушатели, песни, заглавия). Работи, докато страницата е отворена;
-     данните се пазят в този браузър (localStorage) за последните 8 дни. Нищо не записва другаде. -->
+     данните се пазят в този браузър (localStorage): песните – 30 дни (старите дни свити, без адресите на обложките), слушателите по минути – 8 дни. Нищо не записва другаде. -->
 <style>
   :root { --bg:#1C0D2B; --card:#2B1740; --line:#432763; --muted:#B9A7CE; --hl:#C7A4EB; --acc:#7B3FB3; --ok:#4ade80; --warn:#fbbf24; --bad:#f87171; }
   * { box-sizing:border-box; margin:0; padding:0; }
@@ -98,7 +98,8 @@
 
   <div class="row2">
     <div class="box" style="margin:0">
-      <h2>Днес <small id="statDay"></small></h2>
+      <h2><span>Статистика <small id="statDay"></small></span>
+        <select id="statSel"><option value="0">днес</option><option value="1">вчера</option><option value="3">последните 3 дни</option><option value="7">последните 7 дни</option><option value="14">последните 14 дни</option><option value="30">последните 30 дни</option></select></h2>
       <div class="grid4" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px">
         <div><div class="big" id="sSongs">0</div><div class="sub">песни</div></div>
         <div><div class="big" id="sCover">–</div><div class="sub">с обложка</div></div>
@@ -119,7 +120,7 @@
     <h2>Дневник на песните
       <span style="display:flex;gap:8px;align-items:center"><select id="daySel"></select><button class="sec" id="csvBtn">Изтегли CSV</button></span></h2>
     <div class="scroll"><table><thead><tr><th>час</th><th></th><th>изпълнител – песен</th><th>слушатели</th><th>обложка</th></tr></thead><tbody id="log"></tbody></table></div>
-    <div class="note">Слушатели: в началото → в края на песента (зелено – повече, червено – по-малко). Пази се 8 дни в този браузър.</div>
+    <div class="note">Слушатели: в началото → в края на песента (зелено – повече, червено – по-малко). Пазят се 30 дни в този браузър (по-старите от днес – без картинките, етикетите остават).</div>
   </div>
 </div>
 
@@ -134,7 +135,11 @@
   function hm(t){ var d = new Date(t); return p2(d.getHours()) + ':' + p2(d.getMinutes()); }
   function dayKey(t){ var d = new Date(t || Date.now()); return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); }
   function load(k, def){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? def : v; } catch (e) { return def; } }
-  function save(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  // При препълнено място – махаме най-стария ден от дневника (после от слушателите) и пробваме пак.
+  function save(k, v){ var t = JSON.stringify(v);
+    for (var n = 0; n < 5; n++) { try { localStorage.setItem(k, t); return; } catch (e) { if (!dropOldest('alma-log-', k) && !dropOldest('alma-lis-', k)) return; } } }
+  function dropOldest(prefix, except){ var ks = []; for (var i = 0; i < localStorage.length; i++) { var x = localStorage.key(i); if (x && x.indexOf(prefix) === 0 && x !== except) ks.push(x); }
+    if (ks.length < 2) return false; ks.sort(); localStorage.removeItem(ks[0]); return true; }
 
   // ---- Текущата песен – същото четене като в cast-receiver/index.html ----
   function splitTitle(raw) {
@@ -317,11 +322,22 @@
 
 
 
-  // ---- Данни по дни (последните 8) ----
-  var KEEP_DAYS = 8;
-  function daysKept(){ var out = []; for (var i = 0; i < KEEP_DAYS; i++) out.push(dayKey(Date.now() - i * 86400000)); return out; }
-  function prune(prefix){ var keep = daysKept(); for (var i = localStorage.length - 1; i >= 0; i--) { var k = localStorage.key(i); if (k && k.indexOf(prefix) === 0 && keep.indexOf(k.slice(prefix.length)) === -1) localStorage.removeItem(k); } }
-  try { prune('alma-lis-'); prune('alma-log-'); } catch (e) {}
+  // ---- Данни по дни: песни – 30 дни, слушатели по минути – 8 ----
+  var LOG_DAYS = 30, LIS_DAYS = 8;
+  function daysKept(n){ var out = []; for (var i = 0; i < (n || LOG_DAYS); i++) out.push(dayKey(Date.now() - i * 86400000)); return out; }
+  function prune(prefix, n){ var keep = daysKept(n); for (var i = localStorage.length - 1; i >= 0; i--) { var k = localStorage.key(i); if (k && k.indexOf(prefix) === 0 && keep.indexOf(k.slice(prefix.length)) === -1) localStorage.removeItem(k); } }
+  try { prune('alma-lis-', LIS_DAYS); prune('alma-log-', LOG_DAYS); } catch (e) {}
+  // Свиване на минали дни: адресът на обложката не трябва – остава само „авто“ / „поправка“ / „няма“ (~4 пъти по-малко място).
+  function compactOld(){ try { var today = dayKey();
+    for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (!k || k.indexOf('alma-log-') !== 0 || k === 'alma-log-' + today) continue;
+      var l = load(k, null); if (!l || !l.length) continue; var ch = false;
+      l.forEach(function(e){
+        if (typeof e.art === 'string' && e.art !== 'wait' && e.art !== 'err' && e.art !== 'auto') {
+          if (e.art.indexOf('fix:') === 0) { if (e.art.length > 4 && e.art !== 'fix:*') { e.art = 'fix:*'; ch = true; } } else { e.art = 'auto'; ch = true; } }
+        if (e.seen != null) { delete e.seen; ch = true; }
+        if (e.raw && e.raw === (e.a ? e.a + ' - ' : '') + e.t) { delete e.raw; ch = true; } });
+      if (ch) save(k, l); } } catch (e) {} }
+  compactOld();
 
   // ---- Поправки (covers.json) и „без обложка“ – общи с covers.html ----
   var LIST = {}, listOk = null;
@@ -516,21 +532,40 @@
   }
   $('cmpSel').onchange = chart;
 
-  function renderStats(){
-    var day = dayKey(), log = logOf(day).filter(function(e){ return e.t; });
-    $('statDay').textContent = day.split('-').reverse().slice(0, 2).join('.');
-    $('sSongs').textContent = log.length;
-    var done = log.filter(function(e){ return e.art !== 'wait' && e.art !== 'err'; }), withC = done.filter(function(e){ return e.art && e.art !== 'fix:'; });
-    $('sCover').textContent = done.length ? Math.round(withC.length / done.length * 100) + '%' : '–';
-    var A = {}, S = {}; log.forEach(function(e){ if (e.a) A[e.a] = (A[e.a] || 0) + 1; var k = (e.a ? e.a + ' – ' : '') + e.t; S[k] = (S[k] || 0) + 1; });
-    var rep = Object.keys(S).filter(function(k){ return S[k] > 1; }); $('sRep').textContent = rep.length;
-    function list(o, ks, el){ el.innerHTML = ks.length ? ks.slice(0, 5).map(function(k){ return '<li><span>' + esc(k) + '</span><b>' + o[k] + '×</b></li>'; }).join('') : '<li class="msg">–</li>'; }
-    list(A, Object.keys(A).sort(function(a, b){ return A[b] - A[a]; }).filter(function(k){ return A[k] > 1; }), $('topA'));
-    list(S, rep.sort(function(a, b){ return S[b] - S[a]; }), $('topS'));
+  // Период: 0 – днес, 1 – вчера, N – последните N дни (с днес).
+  function statDays(){
+    var v = Number($('statSel').value);
+    if (v === 0) return [dayKey()];
+    if (v === 1) return [dayKey(Date.now() - 86400000)];
+    var out = []; for (var i = 0; i < v; i++) out.push(dayKey(Date.now() - i * 86400000)); return out;
   }
+  function dm(d){ return d.split('-').reverse().slice(0, 2).join('.'); }
+  function renderStats(){
+    var days = statDays(), multi = days.length > 1, log = [], withData = 0;
+    days.forEach(function(d){ var l = logOf(d).filter(function(e){ return e.t; }); if (l.length) withData++; l.forEach(function(e){ log.push({ e: e, d: d }); }); });
+    $('statDay').textContent = multi ? dm(days[days.length - 1]) + '–' + dm(days[0]) + ' · ' + withData + (withData === 1 ? ' ден' : ' дни') + ' с данни' : dm(days[0]);
+    $('sSongs').textContent = log.length;
+    var done = log.filter(function(x){ return x.e.art !== 'wait' && x.e.art !== 'err'; }), withC = done.filter(function(x){ return x.e.art && x.e.art !== 'fix:'; });
+    $('sCover').textContent = done.length ? Math.round(withC.length / done.length * 100) + '%' : '–';
+    // Броим и в колко различни дни е пускан (за повече дни).
+    var A = {}, S = {}, AD = {}, SD = {};
+    log.forEach(function(x){ var e = x.e, k = (e.a ? e.a + ' – ' : '') + e.t;
+      if (e.a) { A[e.a] = (A[e.a] || 0) + 1; (AD[e.a] = AD[e.a] || {})[x.d] = 1; }
+      S[k] = (S[k] || 0) + 1; (SD[k] = SD[k] || {})[x.d] = 1; });
+    var rep = Object.keys(S).filter(function(k){ return S[k] > 1; }); $('sRep').textContent = rep.length;
+    var top = multi ? 10 : 5;
+    function list(o, D, ks, el){ el.innerHTML = ks.length ? ks.slice(0, top).map(function(k){ var nd = Object.keys(D[k]).length;
+      return '<li><span>' + esc(k) + '</span><b>' + o[k] + '×' + (multi ? ' <small style="color:var(--muted);font-weight:400">' + nd + (nd === 1 ? ' ден' : ' дни') + '</small>' : '') + '</b></li>'; }).join('') : '<li class="msg">–</li>'; }
+    list(A, AD, Object.keys(A).sort(function(a, b){ return A[b] - A[a] || a.localeCompare(b); }).filter(function(k){ return A[k] > 1; }), $('topA'));
+    list(S, SD, rep.sort(function(a, b){ return S[b] - S[a] || a.localeCompare(b); }), $('topS'));
+  }
+  try { var ss = localStorage.getItem('alma-stat-period'); if (ss != null) $('statSel').value = ss; } catch (e) {}
+  if (!$('statSel').value) $('statSel').value = '0';
+  $('statSel').onchange = function(){ try { localStorage.setItem('alma-stat-period', $('statSel').value); } catch (e) {} renderStats(); };
   function artCell(e){
     if (e.art === 'wait') return '<span class="th"></span>';
     if (e.art === 'err') return '<span class="th none"></span>';
+    if (e.art === 'auto' || e.art === 'fix:*') return '<span class="th"></span>'; // свит стар ден – без картинка
     if (typeof e.art === 'string' && e.art.indexOf('fix:') === 0) { var u = e.art.slice(4); return '<span class="th' + (u ? '' : ' none') + '" style="' + (u ? 'background-image:url(' + esc(u.replace('1000x1000bb', '100x100bb')) + ')' : '') + '"></span>'; }
     return e.art ? '<span class="th" style="background-image:url(' + esc(e.art.replace('1000x1000bb', '100x100bb')) + ')"></span>' : '<span class="th none"></span>';
   }
