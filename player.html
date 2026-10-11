@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<meta name="alma-version" content="v1"><!-- при промяна: +1 тук -->
+<meta name="alma-version" content="v2"><!-- при промяна: +1 тук -->
 <title>Слушай – Радио Alma Mater</title>
 <!-- Alma Plus: малък плейър (отваря се от „▶ Слушай“ в covers/tools/play). Пуска потока, показва песента и обложката
      (същото търсене като на телевизора, с covers.json) и казва на другите страници дали свири (BroadcastChannel „alma-player“). -->
@@ -13,7 +13,7 @@
   * { box-sizing:border-box; margin:0; padding:0; font-feature-settings:"locl" 0; }
   html, body { height:100%; }
   body { background:linear-gradient(160deg,#2B1740,#1C0D2B); color:#fff; font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
-    display:flex; align-items:center; padding:14px; overflow:hidden; }
+    display:flex; align-items:center; padding:14px 12px 14px 14px; overflow:hidden; position:relative; }
   .pl { display:flex; gap:14px; align-items:center; width:100%; }
   .art { width:110px; height:110px; border-radius:10px; flex:none; background:#3a2152 center/cover no-repeat; box-shadow:0 6px 18px rgba(0,0,0,.35); }
   .art.logo { background-size:86%; background-color:#2B1740; }
@@ -25,11 +25,28 @@
   @keyframes br { 50% { opacity:.35; transform:scale(.8); } }
   .t { font-weight:700; font-size:15px; margin-top:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .a { color:var(--muted); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .ctl { display:flex; align-items:center; gap:10px; margin-top:10px; }
-  .pp { width:40px; height:40px; border-radius:50%; background:#fff; color:#2B1740; border:0; display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none; }
+  .ctl { display:flex; align-items:center; gap:10px; margin-top:12px; }
+  .pp { width:42px; height:42px; border-radius:50%; background:#fff; color:#2B1740; border:0; display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none; }
   .pp:hover { background:var(--hl); }
   .pp svg { width:16px; height:16px; fill:currentColor; }
-  input[type=range] { flex:1; min-width:60px; accent-color:var(--hl); }
+  /* Звук: къс вертикален плъзгач (84 px), % отгоре, плоска иконка отдолу (натискане = без звук) */
+  .vol { width:40px; flex:none; align-self:stretch; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; }
+  .pct { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; height:14px; }
+  .track { position:relative; width:6px; height:84px; border-radius:3px; background:rgba(199,164,235,.2); cursor:pointer; touch-action:none; }
+  .track::before { content:''; position:absolute; inset:-6px -14px; }
+  .fill { position:absolute; left:0; right:0; bottom:0; border-radius:3px; background:var(--hl); }
+  .knob { position:absolute; left:50%; width:14px; height:14px; margin:0 0 -7px -7px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.4); }
+  .track:hover .knob, .track.drag .knob { transform:scale(1.15); }
+  .spk { width:30px; height:30px; border:0; background:transparent; color:var(--muted); border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .spk:hover { color:#fff; background:rgba(255,255,255,.07); }
+  .spk svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .vol.muted .fill { background:#6f5a8a; } .vol.muted .pct { color:var(--bad); }
+  /* Браузърът не пусна звук сам – натискане където и да е */
+  .tap { position:absolute; inset:0; background:rgba(20,10,31,.85); display:none; align-items:center; justify-content:center; flex-direction:column; gap:8px; cursor:pointer; text-align:center; z-index:5; padding:10px; }
+  .tap.on { display:flex; }
+  .tap b { font-size:15px; } .tap span { font-size:12px; color:var(--muted); max-width:320px; line-height:1.45; }
+  .tap i { width:48px; height:48px; border-radius:50%; background:#fff; color:#2B1740; display:flex; align-items:center; justify-content:center; }
+  .tap i svg { width:18px; height:18px; fill:currentColor; }
   .st { font-size:11px; color:var(--muted); margin-top:7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 </style>
 </head>
@@ -41,12 +58,17 @@
     <div class="t" id="title">Радио Alma Mater</div>
     <div class="a" id="artist">88 MHz · София</div>
     <div class="ctl">
-      <button class="pp" id="pp" title="Пусни / спри" aria-label="Пусни или спри"></button>
-      <input type="range" id="vol" min="0" max="100" value="80" title="Сила на звука" aria-label="Сила на звука">
+      <button class="pp" id="pp" title="Пусни / спри (интервал)" aria-label="Пусни или спри"></button>
     </div>
     <div class="st" id="st">натисни ▶</div>
   </div>
+  <div class="vol" id="vol" title="Сила на звука (и с колелцето)">
+    <div class="pct" id="pct">80%</div>
+    <div class="track" id="track" role="slider" aria-label="Сила на звука" aria-valuemin="0" aria-valuemax="100" tabindex="0"><div class="fill" id="fill"></div><div class="knob" id="knob"></div></div>
+    <button class="spk" id="spk" title="Без звук" aria-label="Без звук"></button>
+  </div>
 </div>
+<div class="tap" id="tap"><i><svg viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z"/></svg></i><b>Натисни където и да е</b><span>Браузърът иска едно натискане, преди да пусне звук. За да не пита: катинарчето в адресната лента → Настройки на сайта → Звук → Разрешаване.</span></div>
 <audio id="au" preload="none"></audio>
 <script>
 (function(){
@@ -308,8 +330,34 @@
   // ---- Звукът ----
   var au = $('au'), on = false, state = 'stop', retry = null, stallT = null;
   var PLAY = '<svg viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z"/></svg>', STOP = '<svg viewBox="0 0 16 16"><rect x="3" y="3" width="10" height="10" rx="1.5"/></svg>';
-  try { var v = Number(localStorage.getItem('alma-player-vol')); if (v >= 0 && v <= 100 && localStorage.getItem('alma-player-vol') !== null) $('vol').value = v; } catch (e) {}
-  au.volume = $('vol').value / 100;
+  // ---- Звук: вертикален плъзгач + иконка (без звук); помни се ----
+  var vol = 80, muted = false;
+  try { var sv = localStorage.getItem('alma-player-vol'); if (sv !== null && Number(sv) >= 0 && Number(sv) <= 100) vol = Number(sv); muted = localStorage.getItem('alma-player-muted') === '1'; } catch (e) {}
+  var SPK = '<path d="M11 5 6 9H3v6h3l5 4V5z"/>';
+  var ICON = { off: SPK + '<path d="m16 9 5 6M21 9l-5 6"/>', low: SPK + '<path d="M15.5 9.5a3.5 3.5 0 0 1 0 5"/>', high: SPK + '<path d="M15.5 9.5a3.5 3.5 0 0 1 0 5"/><path d="M18.5 6.5a8 8 0 0 1 0 11"/>' };
+  function paintVol(){
+    var v = muted ? 0 : vol;
+    $('fill').style.height = v + '%'; $('knob').style.bottom = v + '%';
+    $('pct').textContent = muted ? 'без' : vol + '%';
+    $('spk').innerHTML = '<svg viewBox="0 0 24 24">' + (muted || vol === 0 ? ICON.off : vol < 50 ? ICON.low : ICON.high) + '</svg>';
+    $('spk').title = muted ? 'Пак със звук' : 'Без звук';
+    $('track').setAttribute('aria-valuenow', v);
+    $('vol').classList.toggle('muted', muted);
+    au.volume = v / 100;
+    try { localStorage.setItem('alma-player-vol', vol); localStorage.setItem('alma-player-muted', muted ? '1' : '0'); } catch (e) {}
+  }
+  function setVol(v){ vol = Math.max(0, Math.min(100, Math.round(v))); if (vol > 0) muted = false; paintVol(); }
+  (function(){ var tr = $('track');
+    function fromY(e){ var r = tr.getBoundingClientRect(); setVol((r.bottom - e.clientY) / r.height * 100); }
+    tr.addEventListener('pointerdown', function(e){ tr.classList.add('drag'); tr.setPointerCapture(e.pointerId); fromY(e); });
+    tr.addEventListener('pointermove', function(e){ if (tr.classList.contains('drag')) fromY(e); });
+    tr.addEventListener('pointerup', function(){ tr.classList.remove('drag'); });
+    tr.addEventListener('pointercancel', function(){ tr.classList.remove('drag'); });
+    tr.addEventListener('keydown', function(e){ if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { setVol(vol + 5); e.preventDefault(); } if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { setVol(vol - 5); e.preventDefault(); } });
+    $('vol').addEventListener('wheel', function(e){ e.preventDefault(); setVol(vol + (e.deltaY < 0 ? 5 : -5)); }, { passive: false });
+    $('spk').onclick = function(){ muted = !muted; if (!muted && vol === 0) vol = 50; paintVol(); };
+  })();
+  paintVol();
   function ui(s){
     state = s;
     $('dot').className = 'dot' + (s === 'play' ? ' play' : s === 'wait' ? ' wait' : s === 'err' ? ' err' : '');
@@ -322,18 +370,21 @@
     clearTimeout(retry); on = true; ui('wait');
     au.src = STREAM + '?_=' + Date.now(); // винаги наново – на живо, без стар буфер
     var p = au.play(); if (p && p.catch) p.catch(function(e){
-      if (e && e.name === 'NotAllowedError') { on = false; ui('stop'); $('st').textContent = 'натисни ▶ за звук'; } // браузърът иска натискане
+      if (e && e.name === 'NotAllowedError') { on = false; ui('stop'); $('tap').classList.add('on'); } // браузърът иска натискане – където и да е
       else fail();
     });
   }
   function stop(){ clearTimeout(retry); clearTimeout(stallT); on = false; au.pause(); au.removeAttribute('src'); au.load(); ui('stop'); }
   function fail(){ if (!on) return; ui('err'); clearTimeout(retry); retry = setTimeout(function(){ if (on) start(); }, 5000); }
-  au.addEventListener('playing', function(){ clearTimeout(stallT); if (on) ui('play'); });
+  au.addEventListener('playing', function(){ clearTimeout(stallT); if (on) ui('play'); try { localStorage.setItem('alma-player-auto', '1'); } catch (e) {} });
   au.addEventListener('waiting', function(){ if (!on) return; ui('wait'); clearTimeout(stallT); stallT = setTimeout(function(){ if (on && state === 'wait') start(); }, 15000); });
   au.addEventListener('error', fail);
   au.addEventListener('ended', fail); // поток на живо не „свършва“ – прекъснат е
   $('pp').onclick = function(){ on ? stop() : start(); };
-  $('vol').oninput = function(){ au.volume = this.value / 100; try { localStorage.setItem('alma-player-vol', this.value); } catch (e) {} };
+  // Натискане където и да е (или клавиш), когато браузърът не е пуснал звука сам.
+  function tapGo(e){ if (!$('tap').classList.contains('on')) return; if (e) e.preventDefault(); $('tap').classList.remove('on'); start(); }
+  $('tap').addEventListener('click', tapGo);
+  window.addEventListener('keydown', function(e){ if ($('tap').classList.contains('on')) tapGo(e); }, true);
 
   // ---- Връзка с другите страници (covers / tools / play): „Слушаш“ навсякъде ----
   var bc = null; try { bc = new BroadcastChannel('alma-player'); } catch (e) {}
@@ -345,8 +396,9 @@
   window.addEventListener('pagehide', function(){ on = false; state = 'stop'; send(); });
   window.addEventListener('keydown', function(e){ if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); on ? stop() : start(); } });
 
-  // Отворен от „▶ Слушай“ – пуска веднага (ако браузърът позволи; иначе чака ▶).
-  if (/[?&]play=1/.test(location.search)) start(); else ui('stop');
+  // Тръгва сам: отворен от „▶ Слушай“ или вече е пускан веднъж (иначе – натисни ▶).
+  var auto = false; try { auto = localStorage.getItem('alma-player-auto') === '1'; } catch (e) {}
+  if (/[?&]play=1/.test(location.search) || auto) start(); else ui('stop');
 })();
 </script>
 </body>
