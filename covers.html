@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Обложки – поправки</title>
 <!-- Alma Plus: страница за поддръжка на списъка с поправки на обложките (covers.json).
-     Само генерира файла – нищо не записва сама. Приложението засега НЕ чете covers.json (тестово). -->
+     Само генерира файла (и своите картинки) – нищо не записва сама. Приложението, телевизорът и колата четат covers.json: ред тук печели пред iTunes; без файла – само iTunes. -->
 <style>
   :root { --bg:#1C0D2B; --card:#2B1740; --line:#432763; --muted:#B9A7CE; --hl:#C7A4EB; --acc:#7B3FB3; --ok:#4ade80; --warn:#fbbf24; --bad:#f87171; }
   * { box-sizing:border-box; margin:0; padding:0; }
@@ -62,6 +62,14 @@
   .res .tr { font-size:12px; color:var(--muted); margin-top:7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .res .al { font-size:13px; font-weight:600; line-height:1.3; }
   .res .m { font-size:12px; color:var(--muted); }
+  .own { margin-top:18px; border-top:1px solid var(--line); padding-top:14px; }
+  .own-ed { display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; margin-top:10px; }
+  .own-ed canvas { width:280px; height:280px; border-radius:12px; background:#1f0f2f; cursor:grab; touch-action:none; border:1px solid var(--line); }
+  .own-ed canvas:active { cursor:grabbing; }
+  .own-side { flex:1; min-width:220px; display:flex; flex-direction:column; gap:10px; font-size:13px; color:var(--muted); }
+  .own-side input[type=range] { width:100%; accent-color:var(--hl); }
+  .own-side code { color:#fff; word-break:break-all; }
+  .tag-own { font-size:11px; color:var(--hl); border:1px solid var(--line); border-radius:6px; padding:1px 6px; margin-left:6px; }
   .res .warn { font-size:11px; color:var(--warn); margin-top:2px; }
   .res.logo .c { display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:13px; text-align:center; padding:10px; }
   .msg { color:var(--muted); font-size:13px; margin:6px 0 12px; }
@@ -90,7 +98,7 @@
     </div>
   </div>
   <div class="sub">Избираш песен → търсиш в iTunes → избираш правилната обложка → добавяш → изтегляш <code>covers.json</code> и го качваш в GitHub (AlmaOne/cast).
-    <b style="color:#fbbf24">Тестово:</b> приложението засега не чете този файл.</div>
+    Ред тук <b>печели пред iTunes</b> – в приложението (след обновлението), на телевизора и в колата (след билда). Ако файлът липсва или е счупен, всичко си търси в iTunes, както без него.</div>
 
   <div class="grid">
     <div class="box">
@@ -114,6 +122,23 @@
       <div class="results" id="results"></div>
       <div class="row" style="margin-top:14px">
         <button id="addBtn" onclick="addSel()" disabled>Добави избраната в списъка</button>
+      </div>
+
+      <div class="own">
+        <h2>Своя картинка <small style="color:var(--muted);font-weight:400">когато песента я няма в iTunes</small></h2>
+        <div class="row"><button class="sec" id="ownPick">Избери картинка от компютъра…</button><input type="file" id="ownFile" accept="image/*" style="display:none"></div>
+        <div class="own-ed" id="ownEd" style="display:none">
+          <canvas id="ownCv" width="400" height="400"></canvas>
+          <div class="own-side">
+            <div>Мести с мишката, увеличавай с плъзгача (или колелцето). Каквото е в квадрата – това ще се вижда.</div>
+            <label>Мащаб <input type="range" id="ownZoom" min="1" max="4" step="0.01" value="1"></label>
+            <div>Файлове: <code id="ownNames">–</code></div>
+            <div id="ownInfo"></div>
+            <button id="ownSave">Запази двата размера и добави в списъка</button>
+            <div class="hint" style="margin:0">Качване: <b>github.com/AlmaOne/cast → папка covers → Add file → Upload files</b> → пусни <b>двата</b> файла → Commit.
+              Първия път (ако папката я няма): <b>Add file → Create new file</b>, име <code>covers/README.md</code>, един ред текст → Commit – и папката се появява.</div>
+          </div>
+        </div>
       </div>
 
       <h2 style="margin-top:18px">Списък с поправки – <span id="cnt">0</span></h2>
@@ -490,9 +515,75 @@
   }
   function pick(el, url){ document.querySelectorAll('.res').forEach(function(e){ e.classList.remove('sel'); }); el.classList.add('sel'); sel = { url: url }; setAdd(); }
   function setAdd(){ $('addBtn').disabled = !sel; }
+  // Приемат се само обложки на Apple и нашите (AlmaOne/cast/covers/) – както в приложението, телевизора и колата.
+  var OUR_COVER = /^https:\/\/almaone\.github\.io\/cast\/covers\/[A-Za-z0-9._-]+\.(?:jpe?g|png)$/i;
+  var APPLE_COVER = /^https:\/\/[a-z0-9-]+\.mzstatic\.com\/\S+$/i;
+  function validCover(u){ return u === null || (typeof u === 'string' && (APPLE_COVER.test(u) || OUR_COVER.test(u))); }
+  function isOwn(u){ return typeof u === 'string' && OUR_COVER.test(u); }
+  function addEntry(a, t, url){
+    if (!t) { toast('Напиши песента (и изпълнителя)'); return false; }
+    if (!validCover(url)) { toast('Този адрес не се приема – само обложки от iTunes или нашите картинки'); return false; }
+    if (url === null && !confirm('„Без обложка“ изключва търсенето в iTunes за тази песен – винаги ще е логото.\n\nСигурен ли си?')) return false;
+    var k = key(a, t); LIST[k] = url; saveDraft(); renderList(); renderSongs(); renderMissing(); toast('Добавено: ' + k); return true;
+  }
   window.addSel = function(){
-    var a = $('artist').value.trim(), t = $('title').value.trim(); if (!sel || !t) return;
-    var k = key(a, t); LIST[k] = sel.url; saveDraft(); renderList(); renderSongs(); renderMissing(); toast('Добавено: ' + k);
+    if (!sel) return;
+    addEntry($('artist').value.trim(), $('title').value.trim(), sel.url);
+  };
+
+  // ---- Своя картинка: квадрат, два размера (1000 за телевизора, 500 за телефона и колата) ----
+  var own = { img: null, zoom: 1, ox: 0, oy: 0 }, P = 400;
+  function slug(a, t){
+    var x = translit(((a ? a + ' ' : '') + t).toLowerCase()).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60).replace(/-+$/, '');
+    return x || ('cover-' + Date.now());
+  }
+  function ownBase(){ return Math.max(P / own.img.width, P / own.img.height); }
+  function ownClamp(){ var sc = ownBase() * own.zoom, dw = own.img.width * sc, dh = own.img.height * sc;
+    own.ox = Math.min(0, Math.max(P - dw, own.ox)); own.oy = Math.min(0, Math.max(P - dh, own.oy)); }
+  function ownDraw(cv, N){ var c = cv.getContext('2d'), f = N / P, sc = ownBase() * own.zoom;
+    c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+    c.fillStyle = '#000'; c.fillRect(0, 0, N, N);
+    c.drawImage(own.img, own.ox * f, own.oy * f, own.img.width * sc * f, own.img.height * sc * f); }
+  function ownNames(){ var b = slug($('artist').value.trim(), $('title').value.trim()); $('ownNames').textContent = b + '-1000.jpg и ' + b + '-500.jpg'; return b; }
+  function ownRender(){ if (!own.img) return; ownClamp(); ownDraw($('ownCv'), P); ownNames(); }
+  function ownZoomTo(z){ var sc0 = ownBase() * own.zoom, cx = (P / 2 - own.ox) / sc0, cy = (P / 2 - own.oy) / sc0;
+    own.zoom = Math.max(1, Math.min(4, z)); var sc1 = ownBase() * own.zoom; own.ox = P / 2 - cx * sc1; own.oy = P / 2 - cy * sc1;
+    $('ownZoom').value = own.zoom; ownRender(); }
+  $('ownPick').onclick = function(){ $('ownFile').click(); };
+  $('ownFile').onchange = function(){
+    var file = this.files && this.files[0]; this.value = ''; if (!file) return;
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function(){
+      own.img = img; own.zoom = 1; $('ownZoom').value = 1;
+      var sc = ownBase(); own.ox = (P - img.width * sc) / 2; own.oy = (P - img.height * sc) / 2;
+      $('ownEd').style.display = '';
+      var small = Math.min(img.width, img.height);
+      $('ownInfo').innerHTML = 'Оригинал: ' + img.width + '×' + img.height + (small < 1000 ? ' <span style="color:var(--warn)">– по-малка от 1000, на телевизора може да е леко размазана</span>' : '');
+      ownRender();
+    };
+    img.onerror = function(){ toast('Тази картинка не може да се отвори'); };
+    img.src = url;
+  };
+  $('ownZoom').oninput = function(){ ownZoomTo(Number(this.value)); };
+  $('artist').addEventListener('input', function(){ if (own.img) ownNames(); });
+  $('title').addEventListener('input', function(){ if (own.img) ownNames(); });
+  (function(){ var cv = $('ownCv'), drag = null;
+    cv.addEventListener('pointerdown', function(e){ if (!own.img) return; drag = { x: e.clientX, y: e.clientY, ox: own.ox, oy: own.oy }; cv.setPointerCapture(e.pointerId); });
+    cv.addEventListener('pointermove', function(e){ if (!drag) return; var k = P / cv.getBoundingClientRect().width;
+      own.ox = drag.ox + (e.clientX - drag.x) * k; own.oy = drag.oy + (e.clientY - drag.y) * k; ownRender(); });
+    cv.addEventListener('pointerup', function(){ drag = null; }); cv.addEventListener('pointercancel', function(){ drag = null; });
+    cv.addEventListener('wheel', function(e){ if (!own.img) return; e.preventDefault(); ownZoomTo(own.zoom * (e.deltaY < 0 ? 1.08 : 1 / 1.08)); }, { passive: false });
+  })();
+  function saveJpg(N, name){ return new Promise(function(res){ var cv = document.createElement('canvas'); cv.width = cv.height = N; ownDraw(cv, N);
+    cv.toBlob(function(b){ var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; document.body.appendChild(a); a.click(); a.remove(); res(b.size); }, 'image/jpeg', 0.88); }); }
+  $('ownSave').onclick = function(){
+    var a = $('artist').value.trim(), t = $('title').value.trim();
+    if (!own.img) return; if (!t) { toast('Първо напиши (или избери отляво) изпълнител и песен'); return; }
+    var b = ownNames(), big = 'https://almaone.github.io/cast/covers/' + b + '-1000.jpg';
+    saveJpg(1000, b + '-1000.jpg').then(function(s1){ return new Promise(function(r){ setTimeout(r, 400); }).then(function(){ return saveJpg(500, b + '-500.jpg'); }).then(function(s2){
+      if (addEntry(a, t, big)) $('ownInfo').innerHTML = 'Изтеглени: <b>' + esc(b) + '-1000.jpg</b> (' + Math.round(s1 / 1024) + ' KB) и <b>' + esc(b) + '-500.jpg</b> (' + Math.round(s2 / 1024) + ' KB). Качи ги в covers/ и после covers.json.' +
+        '<br><span style="color:var(--muted)">Ако браузърът попита „да изтегли ли няколко файла“ – разреши.</span>';
+    }); });
   };
 
   // ---- Списъкът ----
@@ -502,7 +593,7 @@
     keys.forEach(function(k){
       var d = document.createElement('div'); d.className = 'item'; var url = LIST[k];
       d.innerHTML = '<div class="th' + (url ? '' : ' none') + '" style="' + (url ? 'background-image:url(' + esc(url.replace('1000x1000bb', '100x100bb')) + ')' : '') + '">' + '' + '</div>' +
-        '<div class="k">' + esc(k) + '</div><button class="sec">Махни</button>';
+        '<div class="k">' + esc(k) + (isOwn(url) ? '<span class="tag-own">своя</span>' : '') + (url !== null && !validCover(url) ? '<span class="tag-own" style="color:var(--bad)">негоден адрес – ще се пропусне</span>' : '') + '</div><button class="sec">Махни</button>';
       d.querySelector('button').onclick = function(){ delete LIST[k]; saveDraft(); renderList(); renderSongs(); };
       c.appendChild(d);
     });
@@ -518,7 +609,8 @@
     BASE = o && typeof o === 'object' ? o : {};
     var dr = lget(DRAFT, null);
     if (dr && sortedJson(dr) !== sortedJson(BASE)) LIST = dr; else { LIST = JSON.parse(JSON.stringify(BASE)); try { localStorage.removeItem(DRAFT); } catch (e) {} }
-    $('loadMsg').textContent = 'Зареден е текущият covers.json от GitHub (' + Object.keys(BASE).length + ').'; showDraft(); renderList(); renderSongs(); renderMissing();
+    var bad = Object.keys(BASE).filter(function(k){ return !validCover(BASE[k]) || k.indexOf('|') === -1; }).length;
+    $('loadMsg').textContent = 'Зареден е текущият covers.json от GitHub (' + Object.keys(BASE).length + ').' + (bad ? ' ⚠ ' + bad + ' реда са негодни – приложението ги пропуска.' : ''); showDraft(); renderList(); renderSongs(); renderMissing();
   }).catch(function(){ BASE = {}; LIST = lget(DRAFT, {}) || {}; $('loadMsg').textContent = 'Няма качен covers.json' + (Object.keys(LIST).length ? ' – показвам неизкачените промени.' : ' – започваш с празен списък.'); showDraft(); renderList(); renderSongs(); });
   $('dropDraft').onclick = function(){ if (!BASE) return; LIST = JSON.parse(JSON.stringify(BASE)); saveDraft(); renderList(); renderSongs(); renderMissing(); toast('Промените са отказани'); };
 

@@ -386,10 +386,45 @@
     if (!coll) return true;
     return artist ? artistLevel(artist, coll) >= 1 : matchScore('', title, coll, '') === 2;
   }
+  // ---- Поправки на обложките (covers.json до тази страница) – само добавка ----
+  // Липсва, счупен е или бави – всичко е както без него (iTunes). Ред в covers.json печели: адрес или null (логото).
+  var covers = {}, coversNextAt = 0, coversBusy = false;
+  var OUR_COVER = /^https:\/\/almaone\.github\.io\/cast\/covers\/[A-Za-z0-9._-]+\.(?:jpe?g|png)$/i;
+  var APPLE_COVER = /^https:\/\/[a-z0-9-]+\.mzstatic\.com\/\S+$/i;
+  function validCover(u) { return typeof u === 'string' && (APPLE_COVER.test(u) || OUR_COVER.test(u)); }
+  function coverKey(a, t) { return (a + '|' + t).toLowerCase().replace(/\s+/g, ' ').trim(); }
+  function parseCovers(text) {
+    if (typeof text !== 'string' || !text || text.length > 2000000) return null;
+    var o; try { o = JSON.parse(text); } catch (e) { return null; }
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
+    var out = {};
+    Object.keys(o).forEach(function (k) { var v = o[k]; if (k.indexOf('|') === -1) return;
+      if (v === null || validCover(v)) out[k.toLowerCase().replace(/\s+/g, ' ').trim()] = v; });
+    return out;
+  }
+  try { var savedCovers = parseCovers(localStorage.getItem('alma-covers-json') || ''); if (savedCovers) covers = savedCovers; } catch (e) {}
+  // Веднъж на час (при неуспех – след 10 мин); не чакаме – песента си търси в iTunes междувременно.
+  function refreshCovers() {
+    if (coversBusy || Date.now() < coversNextAt) return;
+    coversBusy = true;
+    fetchText('covers.json?_=' + Math.floor(Date.now() / 600000), 4000).then(function (t) {
+      var p = parseCovers(t); if (!p) throw new Error('негоден covers.json');
+      var changed = JSON.stringify(p) !== JSON.stringify(covers);
+      covers = p; coversNextAt = Date.now() + 3600000;
+      try { localStorage.setItem('alma-covers-json', t); } catch (e) {}
+      if (changed) coversChanged();
+    }).catch(function () { coversNextAt = Date.now() + 600000; }).finally(function () { coversBusy = false; });
+  }
+  function coverFix(a, t) { var k = coverKey(a, t); return Object.prototype.hasOwnProperty.call(covers, k) ? covers[k] : undefined; }
+  // Телевизорът взима голямата: 1000×1000 от Apple, „…-1000.jpg“ от нашите.
+  function tvSize(u) { return APPLE_COVER.test(u) ? u.replace(/\d+x\d+bb/, '1000x1000bb') : u; }
   var artCache = {};
   // Опити: американският магазин → българският → на латиница → само заглавието → само изпълнителя.
   // Спира при същата песен; ако такава няма – обложка от същия изпълнител.
   function findArtwork(artist, title) {
+    var fix = coverFix(artist, title); // поправка от covers.json – печели пред iTunes
+    if (fix === null) return Promise.resolve(null);
+    if (fix) return Promise.resolve(tvSize(fix));
     var key = (artist + '|' + title).toLowerCase();
     if (key in artCache) return Promise.resolve(artCache[key]);
     var full = (artist + ' ' + title).trim();
@@ -462,7 +497,15 @@
     }
   }
 
+  var curSong = null;
+  // covers.json е дошъл след като песента е тръгнала с iTunes – прилагаме поправката веднага.
+  function coversChanged() {
+    if (!curSong) return;
+    var fix = coverFix(curSong.artist, curSong.title);
+    if (fix !== undefined) show(curSong, fix ? tvSize(fix) : null, false);
+  }
   function poll() {
+    refreshCovers();
     fetchText(NOW_PLAYING_URL + '?_=' + Date.now()).then(function (xml) {
       var track = (xml.match(/<track>([\s\S]*?)<\/track>/) || [])[1] || '';
       var raw = fixEncoding(decodeXml((track.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '')).trim();
@@ -471,6 +514,7 @@
       var key = song ? (song.artist + '|' + song.title).toLowerCase() : '';
       if (key === lastKey) return;
       lastKey = key;
+      curSong = song;
       lastSongChange = Date.now();
       $('main').classList.remove('dim');
       if (logoLight) { logoLight = false; if ($('art').classList.contains('logo')) $('art').src = LOGO; }
@@ -643,7 +687,7 @@
       diagLog.push(t + ' ' + name);
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
-    diag('v29');
+    diag('v30');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');

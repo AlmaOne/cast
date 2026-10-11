@@ -453,9 +453,36 @@
   var SITES = [
     { n: 'Екран за Cast', f: 'index.html', u: 'index.html', check: function(t){ var v = (t.match(/diag\('(v\d+)'\)/) || [])[1]; return v ? 'версия ' + v : 'качен'; } },
     { n: 'Политика за поверителност', f: 'privacy.html', u: 'privacy.html', check: function(t){ var v = (t.match(/В сила от ([^<]+)/) || [])[1]; return v ? 'в сила от ' + v.trim() : 'качена'; } },
-    { n: 'Поправки на обложки', f: 'covers.json', u: 'covers.json', check: function(t){ var o = JSON.parse(t); return Object.keys(o).length + ' поправки'; } },
+    { n: 'Поправки на обложки', f: 'covers.json', u: 'covers.json', check: function(t){ var o = JSON.parse(t); return Object.keys(o).length + ' поправки'; }, after: checkCoverImages },
     { n: 'Сървър Vizitec', f: 'xspf', u: NOW_PLAYING_URL, check: function(t){ return /<track>/.test(t) ? 'отговаря' : 'странен отговор'; } }
   ];
+  // Дали всяка картинка в covers.json се зарежда (и за нашите – двата размера „-1000“ и „-500“).
+  var OUR_COVER = /^https:\/\/almaone\.github\.io\/cast\/covers\/[A-Za-z0-9._-]+\.(?:jpe?g|png)$/i;
+  var APPLE_COVER = /^https:\/\/[a-z0-9-]+\.mzstatic\.com\/\S+$/i;
+  function imgOk(u){ return new Promise(function(res){ var i = new Image(), done = false, tm = setTimeout(function(){ if (!done) { done = true; res(false); } }, 10000);
+    i.onload = function(){ if (!done) { done = true; clearTimeout(tm); res(true); } }; i.onerror = function(){ if (!done) { done = true; clearTimeout(tm); res(false); } };
+    i.src = u + (u.indexOf('?') < 0 ? '?' : '&') + '_=' + Math.floor(Date.now() / 600000); }); }
+  function checkCoverImages(t, d, txt){
+    var o; try { o = JSON.parse(t); } catch (e) { return; }
+    var keys = Object.keys(o), bad = [], invalid = [], jobs = [];
+    keys.forEach(function(k){ var u = o[k];
+      if (u === null) return;
+      if (typeof u !== 'string' || !(APPLE_COVER.test(u) || OUR_COVER.test(u)) || k.indexOf('|') === -1) { invalid.push(k); return; }
+      jobs.push(imgOk(u).then(function(ok){ if (!ok) bad.push(k + ' (не се зарежда)'); }));
+      var small = u.replace(/-1000\.(jpe?g|png)$/i, '-500.$1');
+      if (OUR_COVER.test(u) && small !== u) jobs.push(imgOk(small).then(function(ok){ if (!ok) bad.push(k + ' (липсва -500)'); }));
+    });
+    var sub = d.querySelector('.sub'); sub.textContent = txt + ' · проверявам картинките…';
+    Promise.all(jobs).then(function(){
+      var probs = bad.length + invalid.length;
+      if (!probs) { sub.textContent = txt + ' · всички картинки отговарят'; return; }
+      d.querySelector('.dot').className = 'dot warn';
+      var all = bad.concat(invalid.map(function(k){ return k + ' (негоден адрес – пропуска се)'; }));
+      sub.innerHTML = esc(txt) + ' · <span style="color:var(--warn)">' + probs + (probs === 1 ? ' проблем' : ' проблема') + '</span><br><span style="color:var(--warn)">' + esc(all[0]) + (all.length > 1 ? ' …' : '') + '</span>';
+      sub.title = all.join('\n');
+      sub.style.cursor = 'help';
+    });
+  }
   function checkSites(){
     $('sitesAt').textContent = 'проверено в ' + hm(Date.now());
     var c = $('sites'); c.innerHTML = '';
@@ -466,6 +493,7 @@
       fetchText(s.u + (s.u.indexOf('?') < 0 ? '?' : '&') + '_=' + Date.now(), 10000).then(function(t){
         var txt; try { txt = s.check(t); } catch (e) { throw new Error('невалиден файл'); }
         d.querySelector('.dot').className = 'dot ok'; d.querySelector('.sub').textContent = txt + ' · ' + (Date.now() - t0) + ' ms';
+        if (s.after) s.after(t, d, txt);
       }).catch(function(e){ d.querySelector('.dot').className = 'dot bad'; d.querySelector('.sub').textContent = 'проблем: ' + (e && e.message || e); });
     });
     loadList();
