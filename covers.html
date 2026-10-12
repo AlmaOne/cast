@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<meta name="alma-version" content="v5"><!-- при промяна: +1 тук и долу („Обложки · версия …“) -->
+<meta name="alma-version" content="v6"><!-- при промяна: +1 тук и долу („Обложки · версия …“) -->
 <title>Обложки – поправки</title>
 <!-- Alma Plus: страница за поддръжка на списъка с поправки на обложките (covers.json).
      Само генерира файла (и своите картинки) – нищо не записва сама. Приложението, телевизорът и колата четат covers.json: ред тук печели пред iTunes; без файла – само iTunes. -->
@@ -98,7 +98,15 @@
   .res .warn { font-size:11px; color:var(--warn); margin-top:2px; }
   .res.logo .c { display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:13px; text-align:center; padding:10px; }
   .msg { color:var(--muted); font-size:13px; margin:6px 0 12px; }
-  .list { margin-top:4px; }
+  .list { margin-top:4px; max-height:420px; overflow-y:auto; padding-right:4px; }
+  .list-h { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:18px; }
+  .list-h h2 { margin:0; }
+  .fold { padding:4px 11px !important; font-size:12.5px !important; }
+  .list-tools { display:flex; gap:8px; margin:10px 0 4px; }
+  .list-tools input { flex:1; padding:7px 10px; font-size:13px; }
+  .folded .list, .folded .list-tools { display:none; }
+  .item .acts { display:flex; gap:6px; flex:none; }
+  .item.editing { background:rgba(199,164,235,.1); border-radius:8px; }
   .item { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid rgba(67,39,99,.6); }
   .item .th { width:40px; height:40px; border-radius:6px; flex:none; background:#3a2152 center/cover; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--muted); text-align:center; }
   .item .k { flex:1; min-width:0; font-size:13px; word-break:break-word; }
@@ -134,7 +142,7 @@
       <div class="notes" id="nMiss"><div>Тук остават всички песни без обложка, засечени от страницата – и след презареждане (пазят се в този браузър), докато не ги поправиш или скриеш с ✕. Числото е колко пъти е засечена.</div></div>
       <div id="missing"><div class="msg">Още няма.</div></div>
       <div class="ck" id="ck"><i></i><span id="ckText">последна проверка: –</span></div>
-      <div class="ver">Обложки · версия v5</div>
+      <div class="ver">Обложки · версия v6</div>
     </div>
 
     <div class="box">
@@ -168,11 +176,14 @@
         </div>
       </div>
 
-      <h2 style="margin-top:18px"><span class="hold" data-note="nList">Списък с поправки – <span id="cnt">0</span></span></h2>
+      <div class="list-h"><h2><span class="hold" data-note="nList">Списък с поправки – <span id="cnt">0</span></span></h2><button class="sec fold" id="listFold" type="button">▸ покажи</button></div>
       <div class="notes" id="nList"><div>Качване: <b>github.com/AlmaOne/cast → Add file → Upload files → covers.json → Commit</b> (заменя стария). Ключът е „изпълнител|песен“ с малки букви; стойност <b>null</b> = без обложка (логото).</div></div>
       <div class="msg" id="loadMsg"></div>
       <div class="msg" id="draftMsg" style="display:none;color:#fbbf24"><span></span> <button class="sec" id="dropDraft" style="padding:3px 9px;font-size:12px;margin-left:6px">Откажи промените</button></div>
-      <div class="list" id="list"></div>
+      <div id="listWrap">
+        <div class="list-tools"><input id="listFilter" placeholder="Търси в списъка…" autocomplete="off"></div>
+        <div class="list" id="list"></div>
+      </div>
       <div class="row" style="margin-top:12px">
         <button onclick="download()">Изтегли covers.json</button>
         <button class="sec" onclick="copyJson()">Копирай</button>
@@ -552,7 +563,7 @@
     if (!t) { toast('Напиши песента (и изпълнителя)'); return false; }
     if (!validCover(url)) { toast('Този адрес не се приема – само обложки от iTunes или нашите картинки'); return false; }
     if (url === null && !confirm('„Без обложка“ изключва търсенето в iTunes за тази песен – винаги ще е логото.\n\nСигурен ли си?')) return false;
-    var k = key(a, t); LIST[k] = url; saveDraft(); renderList(); renderSongs(); renderMissing(); toast('Добавено: ' + k); return true;
+    var k = key(a, t), was = LIST.hasOwnProperty(k); LIST[k] = url; editing = null; saveDraft(); renderList(); renderSongs(); renderMissing(); toast((was ? 'Сменено: ' : 'Добавено: ') + k); return true;
   }
   window.addSel = function(){
     if (!sel) return;
@@ -622,16 +633,32 @@
 
   // ---- Списъкът ----
   function renderList(){
-    var keys = Object.keys(LIST).sort(), c = $('list'); c.innerHTML = '';
-    $('cnt').textContent = keys.length;
+    var all = Object.keys(LIST).sort(), c = $('list'); c.innerHTML = '';
+    var q = ($('listFilter').value || '').toLowerCase().trim();
+    var keys = q ? all.filter(function(k){ return k.indexOf(q) !== -1; }) : all;
+    $('cnt').textContent = all.length;
+    if (q && !keys.length) c.innerHTML = '<div class="msg">Няма поправка, която да съдържа „' + esc(q) + '“.</div>';
     keys.forEach(function(k){
       var d = document.createElement('div'); d.className = 'item'; var url = LIST[k];
       d.innerHTML = '<div class="th' + (url ? '' : ' none') + '" style="' + (url ? 'background-image:url(' + esc(url.replace('1000x1000bb', '100x100bb')) + ')' : '') + '">' + '' + '</div>' +
-        '<div class="k">' + esc(k) + (isOwn(url) ? '<span class="tag-own">своя</span>' : '') + (url !== null && !validCover(url) ? '<span class="tag-own" style="color:var(--bad)">негоден адрес – ще се пропусне</span>' : '') + '</div><button class="sec">Махни</button>';
-      d.querySelector('button').onclick = function(){ delete LIST[k]; saveDraft(); renderList(); renderSongs(); };
+        '<div class="k">' + esc(k) + (isOwn(url) ? '<span class="tag-own">своя</span>' : '') + (url !== null && !validCover(url) ? '<span class="tag-own" style="color:var(--bad)">негоден адрес – ще се пропусне</span>' : '') + '</div><span class="acts"><button class="sec" data-a="edit" title="Избери друга обложка за тази песен">Смени</button><button class="sec" data-a="del">Махни</button></span>';
+      d.querySelector('[data-a=del]').onclick = function(){ delete LIST[k]; saveDraft(); renderList(); renderSongs(); };
+      d.querySelector('[data-a=edit]').onclick = function(){ editEntry(k); };
+      if (k === editing) d.classList.add('editing');
       c.appendChild(d);
     });
     $('json').textContent = json();
+  }
+  // „Смени“: попълва изпълнителя и песента горе и търси пак – новата обложка (или своя картинка) заменя реда.
+  var editing = null;
+  function editEntry(k){
+    var i = k.indexOf('|'), a = k.slice(0, i), t = k.slice(i + 1);
+    // ако песента е в списъка отляво – с истинските главни/малки букви
+    songs.some(function(s){ if (key(s.artist, s.title) === k) { a = s.artist; t = s.title; return true; } });
+    editing = k; $('artist').value = a; $('title').value = t; renderList();
+    $('artist').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    toast('Избери новата обложка за „' + k + '“ – „Добави“ я заменя');
+    window.search();
   }
   function json(){ var o = {}; Object.keys(LIST).sort().forEach(function(k){ o[k] = LIST[k]; }); return JSON.stringify(o, null, 2) + '\n'; }
   window.download = function(){ var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([json()], { type: 'application/json' })); a.download = 'covers.json'; a.click(); };
@@ -647,6 +674,16 @@
     $('loadMsg').textContent = 'Зареден е текущият covers.json от GitHub (' + Object.keys(BASE).length + ').' + (bad ? ' ⚠ ' + bad + ' реда са негодни – приложението ги пропуска.' : ''); showDraft(); renderList(); renderSongs(); renderMissing();
   }).catch(function(){ BASE = {}; LIST = lget(DRAFT, {}) || {}; $('loadMsg').textContent = 'Няма качен covers.json' + (Object.keys(LIST).length ? ' – показвам неизкачените промени.' : ' – започваш с празен списък.'); showDraft(); renderList(); renderSongs(); });
   $('dropDraft').onclick = function(){ if (!BASE) return; LIST = JSON.parse(JSON.stringify(BASE)); saveDraft(); renderList(); renderSongs(); renderMissing(); toast('Промените са отказани'); };
+
+  // ---- Списъкът с поправки се свива (по подразбиране – свит; помни се) ----
+  (function(){
+    var wrap = $('listWrap'), btn = $('listFold'), folded = true;
+    try { folded = localStorage.getItem('alma-covers-fold') !== '0'; } catch (e) {}
+    function paint(){ wrap.classList.toggle('folded', folded); btn.textContent = folded ? '▸ покажи' : '▾ скрий'; }
+    btn.onclick = function(){ folded = !folded; try { localStorage.setItem('alma-covers-fold', folded ? '1' : '0'); } catch (e) {} paint(); if (!folded) $('listFilter').focus(); };
+    $('listFilter').addEventListener('input', renderList);
+    paint();
+  })();
 
   // ---- Бележки: задръж заглавие ~0,6 сек. ----
   (function(){
