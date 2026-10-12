@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<meta name="alma-version" content="v2"><!-- при промяна: +1 тук и долу („Инструменти · версия …“) -->
+<meta name="alma-version" content="v3"><!-- при промяна: +1 тук и долу („Инструменти · версия …“) -->
 <title>Инструменти – Alma Plus</title>
 <!-- Alma Plus: инструменти за наблюдение (поток, слушатели, песни, заглавия). Работи, докато страницата е отворена;
      данните се пазят в този браузър (localStorage): песните – 30 дни (старите дни свити, без адресите на обложките), слушателите по минути – 8 дни. Нищо не записва другаде. -->
@@ -131,9 +131,9 @@
     <h2>Дневник на песните
       <span style="display:flex;gap:8px;align-items:center"><select id="daySel"></select><button class="sec" id="csvBtn">Изтегли CSV</button></span></h2>
     <div class="scroll"><table><thead><tr><th>час</th><th></th><th>изпълнител – песен</th><th>слушатели</th><th>обложка</th></tr></thead><tbody id="log"></tbody></table></div>
-    <div class="note">Слушатели: в началото → в края на песента (зелено – повече, червено – по-малко). Пазят се 30 дни в този браузър (по-старите от днес – без картинките, етикетите остават).</div>
+    <div class="note">Слушатели: в началото → в края на песента (зелено – повече, червено – по-малко). Пазят се 30 дни в този браузър (по-старите от вчера – без картинките, етикетите остават).</div>
   </div>
-  <div class="ver">Инструменти · версия v2</div>
+  <div class="ver">Инструменти · версия v3</div>
 </div>
 
 <script>
@@ -340,8 +340,9 @@
   function prune(prefix, n){ var keep = daysKept(n); for (var i = localStorage.length - 1; i >= 0; i--) { var k = localStorage.key(i); if (k && k.indexOf(prefix) === 0 && keep.indexOf(k.slice(prefix.length)) === -1) localStorage.removeItem(k); } }
   try { prune('alma-lis-', LIS_DAYS); prune('alma-log-', LOG_DAYS); } catch (e) {}
   // Свиване на минали дни: адресът на обложката не трябва – остава само „авто“ / „поправка“ / „няма“ (~4 пъти по-малко място).
-  function compactOld(){ try { var today = dayKey();
-    for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (!k || k.indexOf('alma-log-') !== 0 || k === 'alma-log-' + today) continue;
+  // Днес и вчера не се пипат (covers.html показва песните от тези два дни – с картинките).
+  function compactOld(){ try { var today = dayKey(), yday = dayKey(Date.now() - 86400000);
+    for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (!k || k.indexOf('alma-log-') !== 0 || k === 'alma-log-' + today || k === 'alma-log-' + yday) continue;
       var l = load(k, null); if (!l || !l.length) continue; var ch = false;
       l.forEach(function(e){
         if (typeof e.art === 'string' && e.art !== 'wait' && e.art !== 'err' && e.art !== 'auto') {

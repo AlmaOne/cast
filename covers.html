@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<meta name="alma-version" content="v4"><!-- при промяна: +1 тук и долу („Обложки · версия …“) -->
+<meta name="alma-version" content="v5"><!-- при промяна: +1 тук и долу („Обложки · версия …“) -->
 <title>Обложки – поправки</title>
 <!-- Alma Plus: страница за поддръжка на списъка с поправки на обложките (covers.json).
      Само генерира файла (и своите картинки) – нищо не записва сама. Приложението, телевизорът и колата четат covers.json: ред тук печели пред iTunes; без файла – само iTunes. -->
@@ -134,7 +134,7 @@
       <div class="notes" id="nMiss"><div>Тук остават всички песни без обложка, засечени от страницата – и след презареждане (пазят се в този браузър), докато не ги поправиш или скриеш с ✕. Числото е колко пъти е засечена.</div></div>
       <div id="missing"><div class="msg">Още няма.</div></div>
       <div class="ck" id="ck"><i></i><span id="ckText">последна проверка: –</span></div>
-      <div class="ver">Обложки · версия v4</div>
+      <div class="ver">Обложки · версия v5</div>
     </div>
 
     <div class="box">
@@ -198,7 +198,8 @@
   function artOf(e){ if (typeof e.art === 'string' && e.art.indexOf('fix:') === 0) return e.art.slice(4) || null; return e.art; }
   function loadSongs(){
     var all = logOf(dayKey(Date.now() - 86400000)).concat(logOf(dayKey())).filter(function(e){ return e.t; });
-    songs = all.slice(-30).reverse().map(function(e){ return { artist: e.a, title: e.t, at: p2(new Date(e.at).getHours()) + ':' + p2(new Date(e.at).getMinutes()), auto: artOf(e), id: e.at }; });
+    songs = all.slice(-30).reverse().map(function(e){ var a = artOf(e); if (a === 'auto' || a === '*') a = 'wait'; // свит ден (без адреса) – търсим пак
+      return { artist: e.a, title: e.t, at: p2(new Date(e.at).getHours()) + ':' + p2(new Date(e.at).getMinutes()), auto: a, id: e.at }; });
     var last = all[all.length - 1];
     if (last && last.end == null && Date.now() - (last.seen || last.at) < 3 * 60000) lastKey = key(last.a, last.t);
   }
@@ -669,7 +670,10 @@
   renderMissing();
   loadSongs(); renderSongs();
   // песни без отговор за обложката (страницата е била затворена по време на търсенето) – търсим пак
-  songs.slice(0, 5).forEach(function(it){ if (it.auto === 'wait' || it.auto === 'err') findArtwork(it.artist, it.title).then(function(u){ var a = u === undefined ? 'err' : (u || null); setArt(it.id, a); if (a === null) noteMissing(it); loadSongs(); renderSongs(); }); });
+  // Песни без отговор (страницата е била затворена по време на търсенето, или денят е свит) – търсим пак, една по една (iTunes не обича много заявки наведнъж).
+  (function(){ var q = songs.filter(function(it){ return it.auto === 'wait' || it.auto === 'err'; });
+    (function next(){ var it = q.shift(); if (!it) return;
+      findArtwork(it.artist, it.title).then(function(u){ var a = u === undefined ? 'err' : (u || null); setArt(it.id, a); if (a === null) noteMissing(it); loadSongs(); renderSongs(); setTimeout(next, 1200); }); })(); })();
   poll(); setInterval(poll, 10000);
 })();
 </script>
