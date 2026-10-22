@@ -425,12 +425,23 @@
   var artCache = {};
   // Опити: американският магазин → българският → на латиница → само заглавието → само изпълнителя.
   // Спира при същата песен; ако такава няма – обложка от същия изпълнител.
+  // Смесени букви в една дума („Остaва“ с латинско „a“, „Сoldplay“ с кирилско „С“) – като в приложението (fixMixed).
+  var LAT2CYR = { a:'а', c:'с', e:'е', o:'о', p:'р', x:'х', y:'у', A:'А', B:'В', C:'С', E:'Е', H:'Н', K:'К', M:'М', O:'О', P:'Р', T:'Т', X:'Х' }, CYR2LAT = {};
+  Object.keys(LAT2CYR).forEach(function (l) { CYR2LAT[LAT2CYR[l]] = l; });
+  function fixMixed(x) {
+    return String(x).replace(/\p{L}+/gu, function (w) {
+      var cyr = (w.match(/[а-яё]/gi) || []).length, lat = (w.match(/[a-z]/gi) || []).length;
+      if (!cyr || !lat) return w;
+      return cyr >= lat ? w.replace(/[a-z]/gi, function (c) { return LAT2CYR[c] || c; }) : w.replace(/[а-яё]/gi, function (c) { return CYR2LAT[c] || c; });
+    });
+  }
   function findArtwork(artist, title) {
     var fix = coverFix(artist, title); // поправка от covers.json – печели пред iTunes
     if (fix === null) return Promise.resolve(null);
     if (fix) return Promise.resolve(tvSize(fix));
     var key = (artist + '|' + title).toLowerCase();
     if (key in artCache) return Promise.resolve(artCache[key]);
+    artist = fixMixed(artist); title = fixMixed(title); // „Остaва“ → „Остава“ – иначе iTunes не я намира
     var full = (artist + ' ' + title).trim();
     var tries = [[full, 'us'], [full, 'bg']];
     if (hasCyrillic(full)) tries.push([translit(full), 'bg']);
@@ -692,7 +703,7 @@
       diagLog.push(t + ' ' + name);
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
-    diag('v30');
+    diag('v31');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');

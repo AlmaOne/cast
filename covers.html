@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<meta name="alma-version" content="v6"><!-- при промяна: +1 тук и долу („Обложки · версия …“) -->
+<meta name="alma-version" content="v7"><!-- при промяна: +1 тук и долу („Обложки · версия …“) -->
 <title>Обложки – поправки</title>
 <!-- Alma Plus: страница за поддръжка на списъка с поправки на обложките (covers.json).
      Само генерира файла (и своите картинки) – нищо не записва сама. Приложението, телевизорът и колата четат covers.json: ред тук печели пред iTunes; без файла – само iTunes. -->
@@ -65,8 +65,27 @@
   .tag.fix { background:rgba(251,191,36,.15); color:var(--warn); }
   .tag.ok { background:rgba(74,222,128,.15); color:var(--ok); }
   .tag.bad { background:rgba(248,113,113,.15); color:var(--bad); }
-  .miss-h { display:flex; align-items:center; justify-content:space-between; margin:18px 0 6px; }
-  .miss-h h2 { margin:0; }
+  /* „За проверка“ */
+  .chips { display:flex; gap:6px; flex-wrap:wrap; margin:0 0 8px; }
+  .chip { font-size:12px !important; border:1px solid var(--line) !important; background:transparent !important; color:var(--muted) !important; border-radius:999px !important; padding:4px 10px !important; font-weight:500 !important; }
+  .chip.on { color:#fff !important; border-color:var(--hl) !important; background:rgba(199,164,235,.12) !important; }
+  .chip i { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; }
+  .qcols { display:grid; grid-template-columns:1fr 1fr; gap:0 28px; max-height:640px; overflow-y:auto; padding-right:4px; }
+  @media (max-width:900px) { .qcols { grid-template-columns:1fr; } }
+  .q { padding:10px 0; border-bottom:1px solid rgba(67,39,99,.5); font-size:13px; display:flex; gap:10px; align-items:flex-start; }
+  .q .qb { flex:1; min-width:0; } .q .qt { display:flex; gap:8px; align-items:center; flex-wrap:wrap; } .q .qt b { color:#fff; }
+  .q .ptag { font-size:11px; font-weight:700; border-radius:6px; padding:2px 7px; white-space:nowrap; }
+  .q .raw { margin-top:5px; font-size:12px; color:var(--muted); }
+  .q .raw code { color:#fff; background:rgba(255,255,255,.06); border-radius:5px; padding:1px 5px; font-family:ui-monospace,Consolas,monospace; font-size:12px; white-space:pre-wrap; word-break:break-word; }
+  .q .raw code .m { background:rgba(248,113,113,.35); outline:1px solid #f87171; border-radius:3px; padding:0 1px; }
+  .q .raw code .m.mix { background:rgba(245,158,11,.35); outline-color:#f59e0b; }
+  .q .where { margin:5px 0 0; padding:0; list-style:none; font-size:12px; color:#e7dcf3; } .q .where li { margin-top:2px; } .q .where li::before { content:'→ '; color:#f87171; }
+  .q .exp { margin-top:4px; font-size:12.5px; color:#e7dcf3; line-height:1.5; } .q .exp b { color:#fff; }
+  .q .fix { margin-top:3px; font-size:12px; color:var(--muted); line-height:1.5; } .q .fix > b:first-child { color:var(--ok); font-weight:600; }
+  .q .qacts { display:flex; flex-direction:column; gap:6px; align-items:flex-end; flex:none; }
+  .q .qacts button { padding:5px 10px; font-size:12px; }
+  .qhidden { font-size:12px; color:var(--muted); margin-top:8px; } .qhidden a { color:var(--hl); cursor:pointer; text-decoration:underline; }
+  input.flash { border-color:var(--hl) !important; box-shadow:0 0 0 3px rgba(199,164,235,.25); }
   .miss .x { background:transparent; border:1px solid var(--line); color:var(--muted); padding:3px 8px; font-size:12px; font-weight:500; border-radius:8px; }
   .tag.now { background:rgba(239,68,68,.18); color:#fca5a5; }
   .row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
@@ -138,11 +157,8 @@
       <h2><span class="hold" data-note="nSongs">Песни от радиото</span></h2>
       <div class="notes" id="nSongs"><div>Страницата следи радиото на всеки 10 сек и пази песните, докато е отворена (до 30). До всяка е обложката, която приложението и телевизорът намират сами (същото търсене): <b style="color:#4ade80">авто</b> – има, <b style="color:#f87171">няма</b> – ще излезе логото, <b style="color:#fbbf24">в списъка</b> – от поправките.</div></div>
       <div id="songs"><div class="msg">Чакам песен от радиото…</div></div>
-      <div class="miss-h"><h2><span class="hold" data-note="nMiss">Без обложка – за поправка (<span id="missCnt">0</span>)</span></h2></div>
-      <div class="notes" id="nMiss"><div>Тук остават всички песни без обложка, засечени от страницата – и след презареждане (пазят се в този браузър), докато не ги поправиш или скриеш с ✕. Числото е колко пъти е засечена.</div></div>
-      <div id="missing"><div class="msg">Още няма.</div></div>
       <div class="ck" id="ck"><i></i><span id="ckText">последна проверка: –</span></div>
-      <div class="ver">Обложки · версия v6</div>
+      <div class="ver">Обложки · версия v7</div>
     </div>
 
     <div class="box">
@@ -191,6 +207,13 @@
       <details><summary>Виж файла</summary><pre id="json"></pre></details>
     </div>
   </div>
+  <div class="box" id="qBox" style="margin-top:16px">
+    <h2><span><span class="hold" data-note="nQ">За проверка (<span id="qCnt">0</span>)</span></span> <small style="color:var(--muted);font-weight:400;font-size:12px">какво е пратило радиото и какво не е наред · ✕ = скрий завинаги</small></h2>
+    <div class="notes" id="nQ"><div>Тук са всички заглавия с проблем – засечени от Обложки или Инструменти, докато са отворени (общ списък). <b>Грешно изписано име</b> и <b>Няма обложка</b> се оправят тук с „Поправи“; останалите – в програмата на радиото. Оцветеното в „Радиото прати“ показва точно къде е проблемът. Поправените в covers.json излизат сами; пазят се до 60 дни (най-много 200).</div></div>
+    <div class="chips" id="qChips"></div>
+    <div class="qcols" id="quality"><div class="msg">Още няма.</div></div>
+    <div class="qhidden" id="qHidden"></div>
+  </div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -223,6 +246,158 @@
     var e = { at: now, seen: now, a: s.artist, t: s.title, raw: raw, ls: curLis, art: 'wait' };
     l.push(e); lset('alma-log-' + d, l); return e;
   }
+  // ==== Заглавия за проверка – общ списък за Обложки и Инструменти (localStorage „alma-quality“) ====
+  var QKEY = 'alma-quality', QHIDE = 'alma-quality-hidden';
+  function qload(k){ try { return JSON.parse(localStorage.getItem(k)) || {}; } catch (e) { return {}; } }
+  function qsave(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  var QTYPES = {
+    typo:     { label: 'Грешно изписано име', color: '#fbbf24', cover: 1,
+                exp: function(q){ return 'iTunes има същата песен, но от <b>' + esc(q.sug) + '</b> – почти същото име. Радиото най-вероятно е сбъркало буква, затова обложката не се намира.'; },
+                fix: '„Поправи“ → избери обложката на „{sug}“ (търси се и по това име). И кажи на радиото да оправи името.' },
+    nocover:  { label: 'Няма обложка', color: '#f87171', cover: 1,
+                exp: function(){ return 'Нито iTunes, нито covers.json имат тази песен – слушателите виждат логото на радиото.'; },
+                fix: '„Поправи“ → потърси с друго изписване, или „Своя картинка“. Ако я няма никъде – скрий с ✕ (логото е нормално).' },
+    noartist: { label: 'Липсва изпълнител', color: '#60a5fa',
+                exp: function(){ return 'Радиото е пратило само едно поле, без „Изпълнител - Песен“. В приложението вторият ред е празен (—), а обложката се търси само по това име.'; },
+                fix: 'В програмата на радиото попълни и изпълнителя. Ако това е име на предаване или джингъл – скрий с ✕.' },
+    filename: { label: 'Име на файл', color: '#a78bfa',
+                exp: function(){ return 'В заглавието има номер на песен, разширение (.mp3) или долни черти – изглежда е пратено името на файла, а не заглавието.'; },
+                fix: 'В програмата на радиото попълни заглавието (тага) на файла.' },
+    mixed:    { label: 'Смесени букви', color: '#f59e0b',
+                exp: function(){ return 'В една дума има и кирилски, и латински букви, които изглеждат еднакво – за окото е същата дума, но за търсенето е друга. (Обложката вече се търси с оправената дума, но заглавието си остава грешно.)'; },
+                fix: 'Напиши думата наново в програмата на радиото – цялата на кирилица или цялата на латиница.' },
+    symbols:  { label: 'Знаци, които пречат', color: '#f472b6',
+                exp: function(){ return 'В заглавието има знаци, които не се виждат или не са обикновени букви (често идват от копиране от сайт) – iTunes не ги разбира и търсенето може да не намери песента.'; },
+                fix: 'Изтрий и напиши наново заглавието в програмата на радиото.' },
+    spaces:   { label: 'Излишни интервали', color: '#94a3b8',
+                exp: function(){ return 'Има излишни интервали – оцветени са в червено, а горе пише точно къде.'; },
+                fix: 'Дребно е, но пречи на сравнението – поправи в програмата на радиото.' },
+    caps:     { label: 'Само главни букви', color: '#fb923c',
+                exp: function(){ return 'Цялото заглавие е с ГЛАВНИ букви – в приложението и на телевизора изглежда като викане.'; },
+                fix: 'Изпиши го нормално в програмата на радиото.' },
+    broken:   { label: 'Развалени букви', color: '#e879f9',
+                exp: function(){ return 'Кирилицата е повредена при пращането (вместо „Щурците“ излиза нещо като „Ð©Ñ…“). Приложението се опитва да я поправи, но не винаги успява.'; },
+                fix: 'Провери в програмата на радиото / Icecast кодировката да е <b>UTF-8</b>.' }
+  };
+  var QORDER = ['typo', 'nocover', 'noartist', 'filename', 'mixed', 'symbols', 'spaces', 'caps', 'broken'];
+  // Записите до 22.10 пазеха само текста – превръщаме го във вид.
+  var OLDWHY = { 'без обложка – вероятно правописна грешка': 'typo', 'без обложка': 'nocover', 'няма „Изпълнител - Песен“': 'noartist', 'само главни букви': 'caps', 'развалени букви': 'broken', 'двойни интервали': 'spaces' };
+  function qType(q){ return q.type || OLDWHY[q.why] || 'nocover'; }
+  function addQ(s, type, sug){
+    var k = key(s.artist, s.title) + '|' + type;
+    if (qload(QHIDE)[k]) return; // скрито завинаги с ✕
+    var Q = qload(QKEY), o = Q[k], now = Date.now();
+    var again = o && now - (o.last || 0) < 8 * 60000; // същото пускане (от другата страница или след презареждане) не се брои пак
+    Q[k] = { a: s.artist, t: s.title, raw: s.raw || (o && o.raw) || '', type: type, sug: sug || (o && o.sug) || '', last: now, count: ((o && o.count) || 0) + (again ? 0 : 1) };
+    var ks = Object.keys(Q).sort(function(x, y){ return Q[y].last - Q[x].last; }); ks.forEach(function(x, i){ if (i >= 200 || now - Q[x].last > 60 * 86400000) delete Q[x]; }); // до 200, най-много 60 дни
+    qsave(QKEY, Q); renderQuality();
+  }
+  function lev(a, b){ var m = a.length, n = b.length, d = []; for (var i = 0; i <= m; i++) { d[i] = [i]; } for (var j = 1; j <= n; j++) d[0][j] = j;
+    for (i = 1; i <= m; i++) for (j = 1; j <= n; j++) d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1)); return d[m][n]; }
+  var NOT_SONG = /alma\s*mater|алма\s*матер|новини|реклам|джингъл|jingle|прогноза|времето|предаване/i;   // имена на предавания – не са „липсва изпълнител“
+  var ODD = /[ ​-‍﻿\t|*#~^\\<>{}\[\]\u0000-\u0008\u000a-\u001f\u007f]/;               // знаци, които пречат
+  function hasMixedWord(x){ return (String(x).match(/\p{L}+/gu) || []).some(function(w){ return /[а-яё]/i.test(w) && /[a-z]/i.test(w); }); }
+  function checkQuality(s, noCover){
+    var raw = s.raw || '';
+    if (!noCover) {
+      var isFile = /\.(mp3|m4a|aac|wav|flac|ogg)\b/i.test(raw) || /^\s*\d{1,3}[\s._-]+\S/.test(raw) || /\S_\S/.test(raw);
+      if (isFile) addQ(s, 'filename'); // името на файла – „липсва изпълнител“ е излишно отгоре
+      else if (raw && raw.indexOf(' - ') === -1 && raw.trim().length >= 3 && !NOT_SONG.test(raw)) addQ(s, 'noartist');
+      if (hasMixedWord(raw)) addQ(s, 'mixed');
+      if (ODD.test(raw)) addQ(s, 'symbols');
+      if (/ {2,}/.test(raw) || /^\s|\s$/.test(raw) || /^\s|\s$/.test(s.artist || '') || /^\s|\s$/.test(s.title || '')) addQ(s, 'spaces');
+      if (raw.length > 6 && raw === raw.toUpperCase() && /[A-ZА-Я]{4}/.test(raw)) addQ(s, 'caps');
+      if (/[�]|Ã|Ð|Ñ/.test(raw)) addQ(s, 'broken');
+      return;
+    }
+    // Без обложка: има ли в iTunes същата песен с много близък изпълнител?
+    if (!s.artist || !s.title) return; // без изпълнител – вече е „Липсва изпълнител“
+    var key0 = key(s.artist, s.title); if (typeof LIST !== 'undefined' && LIST.hasOwnProperty(key0)) return; // вече е в поправките
+    fetchText('https://itunes.apple.com/search?term=' + encodeURIComponent(fixMixed(s.title)) + '&media=music&entity=song&limit=25&country=bg').then(function(txt){
+      var res = []; try { res = JSON.parse(txt).results || []; } catch (e) { return; }
+      var na = norm(s.artist), best = null, bd = 99;
+      res.forEach(function(r){
+        if (!titleMatches(s.title, r.trackName || '')) return;
+        var nb = norm(r.artistName || ''); if (!nb || nb === na) return;
+        var d = lev(na, nb), lim = Math.max(2, Math.round(Math.max(na.length, nb.length) * 0.2));
+        if (d <= lim && d < bd) { bd = d; best = r.artistName; }
+      });
+      addQ(s, best ? 'typo' : 'nocover', best ? best : '');
+    }).catch(function(){ addQ(s, 'nocover'); });
+  }
+  // Старият списък „Без обложка – за поправка“ (до 22.10) – пренася се веднъж като „Няма обложка“.
+  (function(){ var M = qload('alma-covers-missing'), ks = Object.keys(M); if (!ks.length) return;
+    var Q = qload(QKEY); ks.forEach(function(k){ var m = M[k] || {}; var qk = key(m.artist || '', m.title || '') + '|nocover';
+      if (!Q[qk] && m.title) Q[qk] = { a: m.artist || '', t: m.title, raw: (m.artist ? m.artist + ' - ' : '') + m.title, type: 'nocover', sug: '', last: m.last || Date.now(), count: m.count || 1 }; });
+    qsave(QKEY, Q); try { localStorage.removeItem('alma-covers-missing'); } catch (e) {} })();
+  // Всичко в списъка без поправените („Няма обложка“/„Грешно име“, които вече са в covers.json, излизат сами).
+  function qAll(){
+    var Q = qload(QKEY), changed = false;
+    if (typeof LIST !== 'undefined') Object.keys(Q).forEach(function(k){ var q = Q[k], t = qType(q); if (QTYPES[t] && QTYPES[t].cover && LIST.hasOwnProperty(key(q.a, q.t))) { delete Q[k]; changed = true; } });
+    if (changed) qsave(QKEY, Q);
+    return Q;
+  }
+  // Къде точно е проблемът: оцветява знаците и пише „между … и …“.
+  var QNAMES = { ' ': 'интервал без прекъсване (NBSP)', '​': 'невидим знак (zero-width space)', '‌': 'невидим знак (ZWNJ)', '‍': 'невидим знак (ZWJ)', '﻿': 'невидим знак (BOM)', '\t': 'табулация', '|': 'отвесна черта |', '*': 'звездичка *', '#': 'диез #', '~': 'тилда ~', '^': 'знак ^', '\\': 'обратна наклонена черта \\', '<': 'знак <', '>': 'знак >', '{': 'скоба {', '}': 'скоба }', '[': 'скоба [', ']': 'скоба ]' };
+  function qAround(str, i){ var a = str.slice(0, i).split(/\s+/).filter(Boolean).pop() || '', b = str.slice(i + 1).split(/\s+/).filter(Boolean)[0] || '';
+    return a && b ? 'между „' + esc(a) + '“ и „' + esc(b) + '“' : a ? 'след „' + esc(a) + '“' : b ? 'преди „' + esc(b) + '“' : ''; }
+  function annotate(raw){
+    var out = '', where = [], i, ch, n = raw.length, mixAt = {};
+    raw.replace(/\p{L}+/gu, function(w, off){
+      var cyr = (w.match(/[а-яё]/gi) || []).length, lat = (w.match(/[a-z]/gi) || []).length; if (!cyr || !lat) return w;
+      var foreign = cyr >= lat ? /[a-z]/i : /[а-яё]/i, fl = '';
+      for (var j = 0; j < w.length; j++) if (foreign.test(w[j])) { mixAt[off + j] = 1; fl += w[j]; }
+      where.push((cyr >= lat ? 'латинско' : 'кирилско') + ' „' + esc(fl) + '“ в ' + (cyr >= lat ? 'кирилската' : 'латинската') + ' дума „' + esc(w) + '“');
+      return w; });
+    for (i = 0; i < n; i++) {
+      ch = raw[i];
+      if (ch === ' ' && (i === 0 || i === n - 1)) { out += '<span class="m">␣</span>'; where.push('интервал в ' + (i === 0 ? 'началото' : 'края') + ' (' + qAround(raw, i) + ')'); continue; }
+      if (ch === ' ' && raw[i + 1] === ' ') { var k = i; while (raw[k] === ' ') k++; out += '<span class="m">' + Array(k - i + 1).join('␣') + '</span>'; where.push((k - i) + ' интервала ' + qAround(raw, i)); i = k - 1; continue; }
+      if (QNAMES[ch] || /[\u0000-\u001f\u007f]/.test(ch)) { var nm = QNAMES[ch] || 'управляващ знак';
+        out += '<span class="m" title="' + esc(nm) + '">' + (ch === ' ' ? '⍽' : /[​-‍﻿]/.test(ch) ? '◌' : ch === '\t' ? '⇥' : /[\u0000-\u001f\u007f]/.test(ch) ? '�' : esc(ch)) + '</span>';
+        where.push(nm + ' ' + qAround(raw, i)); continue; }
+      out += mixAt[i] ? '<span class="m mix" title="буква от друга азбука">' + esc(ch) + '</span>' : esc(ch);
+    }
+    return { html: out, where: where };
+  }
+  var qFilter = 'all';
+  try { qFilter = localStorage.getItem('alma-quality-filter') || 'all'; } catch (e) {}
+  function renderQuality(){
+    if (!$('quality')) return;
+    var Q = qAll(), all = Object.keys(Q).sort(function(a, b){ return Q[b].last - Q[a].last; }), cnt = {}, nc = 0;
+    all.forEach(function(k){ var t = qType(Q[k]); cnt[t] = (cnt[t] || 0) + 1; if (QTYPES[t] && QTYPES[t].cover) nc++; });
+    if (qFilter !== 'all' && qFilter !== 'cover' && !cnt[qFilter]) qFilter = 'all';
+    $('qCnt').textContent = all.length;
+    $('qChips').innerHTML = all.length ? '<button class="chip' + (qFilter === 'all' ? ' on' : '') + '" data-f="all">Всички ' + all.length + '</button>' +
+      (nc ? '<button class="chip' + (qFilter === 'cover' ? ' on' : '') + '" data-f="cover">Само обложки ' + nc + '</button>' : '') +
+      QORDER.filter(function(t){ return cnt[t]; }).map(function(t){ return '<button class="chip' + (qFilter === t ? ' on' : '') + '" data-f="' + t + '"><i style="background:' + QTYPES[t].color + '"></i>' + QTYPES[t].label + ' ' + cnt[t] + '</button>'; }).join('') : '';
+    $('qChips').querySelectorAll('.chip').forEach(function(b){ b.onclick = function(){ qFilter = b.getAttribute('data-f'); try { localStorage.setItem('alma-quality-filter', qFilter); } catch (e) {} renderQuality(); }; });
+    var ks = all.filter(function(k){ var t = qType(Q[k]); return qFilter === 'all' || (qFilter === 'cover' ? QTYPES[t] && QTYPES[t].cover : t === qFilter); }), c = $('quality');
+    c.innerHTML = ks.length ? ks.map(function(k){ var q = Q[k], t = qType(q), T = QTYPES[t] || QTYPES.nocover, an = annotate(q.raw || '');
+      return '<div class="q"><div class="qb">' +
+        '<div class="qt"><span class="ptag" style="color:' + T.color + ';background:' + T.color + '22;border:1px solid ' + T.color + '55">' + T.label + '</span><b>' + esc((q.a ? q.a + ' – ' : '') + q.t) + '</b>' +
+          '<span class="msg" style="font-size:12px">' + (q.count > 1 ? q.count + '× · ' : '') + fmt(q.last) + '</span></div>' +
+        (q.raw ? '<div class="raw">Радиото прати: <code>' + an.html + '</code></div>' : '') +
+        (an.where.length && t !== 'nocover' && t !== 'typo' ? '<ul class="where">' + an.where.map(function(w){ return '<li>' + w + '</li>'; }).join('') + '</ul>' : '') +
+        '<div class="exp">' + T.exp(q) + '</div>' +
+        '<div class="fix"><b>Какво да направя:</b> ' + T.fix.replace('{sug}', esc(q.sug || '')) + '</div>' +
+        '</div><div class="qacts">' + (T.cover ? '<button class="qfix" data-k="' + esc(k) + '">Поправи</button>' : '') +
+        '<button class="sec qx" data-k="' + esc(k) + '" title="Скрий завинаги (и при следващо пускане)">✕</button></div></div>'; }).join('')
+      : '<div class="msg">' + (all.length ? 'Няма от този вид.' : 'Няма – тук излизат заглавия с проблем, засечени от Обложки или Инструменти, докато са отворени.') + '</div>';
+    c.querySelectorAll('.qx').forEach(function(b){ b.onclick = function(){ var k = b.getAttribute('data-k'), Q2 = qload(QKEY), H = qload(QHIDE);
+      var q = Q2[k]; if (q) H[key(q.a, q.t) + '|' + qType(q)] = Date.now(); delete Q2[k]; qsave(QKEY, Q2); qsave(QHIDE, H); renderQuality(); }; });
+    c.querySelectorAll('.qfix').forEach(function(b){ b.onclick = function(){ var q = qload(QKEY)[b.getAttribute('data-k')]; if (!q) return;
+      $('artist').value = q.a; $('title').value = q.t;
+      extraTerm = q.sug ? (q.sug + ' ' + q.t) : null; // при „Грешно изписано име“ търси и по правилното име
+      [$('artist'), $('title')].forEach(function(e){ e.classList.add('flash'); setTimeout(function(){ e.classList.remove('flash'); }, 1500); });
+      $('artist').scrollIntoView({ behavior: 'smooth', block: 'center' }); search(); }; });
+    var nh = Object.keys(qload(QHIDE)).length;
+    $('qHidden').innerHTML = nh ? 'Скрити завинаги: ' + nh + ' · <a id="qUnhide">покажи ги пак при следващо пускане</a>' : '';
+    if (nh) $('qUnhide').onclick = function(){ qsave(QHIDE, {}); renderQuality(); };
+  }
+  // Промени от другата страница (Инструменти) – веднага и тук.
+  window.addEventListener('storage', function(e){ if (e.key === QKEY || e.key === QHIDE) renderQuality(); });
+
   // ---- Неизкачени поправки – пазят се, докато не качиш covers.json ----
   var DRAFT = 'alma-covers-draft';
   function sortedJson(o){ var r = {}; Object.keys(o || {}).sort().forEach(function(k){ r[k] = o[k]; }); return JSON.stringify(r); }
@@ -296,43 +471,16 @@
       if (!s || !s.title) return;
       var k = key(s.artist, s.title); if (k === lastKey) return; lastKey = k;
       var e = logSong(s, raw);
+      s.raw = raw; checkQuality(s, false); // заглавия за проверка (формат)
       loadSongs(); renderSongs();
       var it = songs[0];
       if (it && (it.auto === 'wait' || it.auto === 'err')) findArtwork(s.artist, s.title).then(function(u){
-        var a = u === undefined ? 'err' : (u || null); setArt(e.at, a); if (a === null) noteMissing(s); loadSongs(); renderSongs(); });
+        var a = u === undefined ? 'err' : (u || null); setArt(e.at, a); if (a === null) checkQuality(s, true); loadSongs(); renderSongs(); });
     }).catch(function(){
       if (!songs.length && !lastOkAt) $('songs').innerHTML = '<div class="msg">Не мога да прочета песента от радиото. Пиши изпълнител и песен ръчно.</div>';
     });
   }
-  // ---- Песни без обложка – пазят се в браузъра (localStorage), за да не се пропусне някоя ----
-  var MKEY = 'alma-covers-missing', MISS = {};
-  try { MISS = JSON.parse(localStorage.getItem(MKEY) || '{}') || {}; } catch (e) { MISS = {}; }
-  function saveMiss(){ try { localStorage.setItem(MKEY, JSON.stringify(MISS)); } catch (e) {} }
-  function noteMissing(s){
-    var k = key(s.artist, s.title); if (LIST.hasOwnProperty(k)) return;
-    try { MISS = JSON.parse(localStorage.getItem(MKEY) || '{}') || {}; } catch (e) {}
-    var m = MISS[k] || { artist: s.artist, title: s.title, count: 0, first: Date.now() };
-    if (!m.last || Date.now() - m.last > 8 * 60000) m.count++; // същото пускане (напр. след презареждане) не се брои пак
-    m.last = Date.now(); MISS[k] = m; saveMiss(); renderMissing();
-  }
-  function fmt(t){ var d = new Date(t), p = function(n){ return ('0' + n).slice(-2); }; return p(d.getDate()) + '.' + p(d.getMonth() + 1) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
-  function renderMissing(){
-    try { MISS = JSON.parse(localStorage.getItem(MKEY) || '{}') || {}; } catch (e) {} // и от „Инструменти“
-    Object.keys(MISS).forEach(function(k){ if (LIST.hasOwnProperty(k) || Date.now() - (MISS[k].last || 0) > 30 * 86400000) delete MISS[k]; }); saveMiss(); // поправените и невидените над 30 дни излизат сами
-    var keys = Object.keys(MISS).sort(function(a, b){ return (MISS[b].last || 0) - (MISS[a].last || 0); });
-    var c = $('missing'); c.innerHTML = ''; $('missCnt').textContent = keys.length;
-    if (!keys.length) { c.innerHTML = '<div class="msg">Няма – всички засечени песни имат обложка.</div>'; return; }
-    keys.forEach(function(k){
-      var m = MISS[k], d = document.createElement('div'); d.className = 'song miss';
-      d.innerHTML = '<div class="th none"></div><div class="tx"><div class="t">' + esc(m.title) + '</div><div class="a">' + esc(m.artist || '—') + '</div></div>' +
-        '<span class="w">' + m.count + '× · ' + fmt(m.last) + '</span><button class="x" title="Скрий">✕</button>';
-      d.querySelector('.x').onclick = function(e){ e.stopPropagation(); delete MISS[k]; saveMiss(); renderMissing(); };
-      d.onclick = function(){ document.querySelectorAll('.song').forEach(function(e){ e.classList.remove('sel'); }); d.classList.add('sel');
-        $('artist').value = m.artist; $('title').value = m.title; search(); };
-      c.appendChild(d);
-    });
-  }
-
+  function fmt(t){ var d = new Date(t), p = function(n){ return ('0' + n).slice(-2); }; return (dayKey(t) === dayKey() ? '' : p(d.getDate()) + '.' + p(d.getMonth() + 1) + ' ') + p(d.getHours()) + ':' + p(d.getMinutes()); }
   function renderSongs(){
     var c = $('songs'); c.innerHTML = songs.length ? '' : '<div class="msg">Чакам песен от радиото…</div>';
     songs.forEach(function(s, i){
@@ -457,9 +605,20 @@
   var artCache = {};
   // Опити: американският магазин → българският → на латиница → само заглавието → само изпълнителя.
   // Спира при същата песен; ако такава няма – обложка от същия изпълнител.
+  // Смесени букви в една дума („Остaва“ с латинско „a“, „Сoldplay“ с кирилско „С“) – като в приложението (fixMixed).
+  var LAT2CYR = { a:'а', c:'с', e:'е', o:'о', p:'р', x:'х', y:'у', A:'А', B:'В', C:'С', E:'Е', H:'Н', K:'К', M:'М', O:'О', P:'Р', T:'Т', X:'Х' }, CYR2LAT = {};
+  Object.keys(LAT2CYR).forEach(function (l) { CYR2LAT[LAT2CYR[l]] = l; });
+  function fixMixed(x) {
+    return String(x).replace(/\p{L}+/gu, function (w) {
+      var cyr = (w.match(/[а-яё]/gi) || []).length, lat = (w.match(/[a-z]/gi) || []).length;
+      if (!cyr || !lat) return w;
+      return cyr >= lat ? w.replace(/[a-z]/gi, function (c) { return LAT2CYR[c] || c; }) : w.replace(/[а-яё]/gi, function (c) { return CYR2LAT[c] || c; });
+    });
+  }
   function findArtwork(artist, title) {
     var key = (artist + '|' + title).toLowerCase();
     if (key in artCache) return Promise.resolve(artCache[key]);
+    artist = fixMixed(artist); title = fixMixed(title); // „Остaва“ → „Остава“ – иначе iTunes не я намира
     var full = (artist + ' ' + title).trim();
     var tries = [[full, 'us'], [full, 'bg']];
     if (hasCyrillic(full)) tries.push([translit(full), 'bg']);
@@ -517,10 +676,13 @@
     });
   }
   // Три търсения наведнъж: изпълнител + песен, само песента, на латиница – iTunes често пише имената иначе.
+  var extraTerm = null;
   window.search = function(){
     var a = $('artist').value.trim(), t = $('title').value.trim(); if (!a && !t) return;
     var my = ++searchN; $('msg').textContent = 'Търсене…'; $('results').innerHTML = ''; sel = null; setAdd();
+    a = fixMixed(a); t = fixMixed(t); // „Остaва“ → „Остава“
     var terms = [(a + ' ' + t).trim()];
+    if (extraTerm) { terms.unshift(extraTerm); extraTerm = null; } // „Поправи“ при грешно име – търси и по правилното
     if (a && t) terms.push(t);
     if (hasCyrillic(a + ' ' + t)) terms.push(translit((a + ' ' + t).trim()));
     Promise.all(terms.map(jsonp)).then(function(all){
@@ -563,7 +725,7 @@
     if (!t) { toast('Напиши песента (и изпълнителя)'); return false; }
     if (!validCover(url)) { toast('Този адрес не се приема – само обложки от iTunes или нашите картинки'); return false; }
     if (url === null && !confirm('„Без обложка“ изключва търсенето в iTunes за тази песен – винаги ще е логото.\n\nСигурен ли си?')) return false;
-    var k = key(a, t), was = LIST.hasOwnProperty(k); LIST[k] = url; editing = null; saveDraft(); renderList(); renderSongs(); renderMissing(); toast((was ? 'Сменено: ' : 'Добавено: ') + k); return true;
+    var k = key(a, t), was = LIST.hasOwnProperty(k); LIST[k] = url; editing = null; saveDraft(); renderList(); renderSongs(); renderQuality(); toast((was ? 'Сменено: ' : 'Добавено: ') + k); return true;
   }
   window.addSel = function(){
     if (!sel) return;
@@ -671,9 +833,9 @@
     var dr = lget(DRAFT, null);
     if (dr && sortedJson(dr) !== sortedJson(BASE)) LIST = dr; else { LIST = JSON.parse(JSON.stringify(BASE)); try { localStorage.removeItem(DRAFT); } catch (e) {} }
     var bad = Object.keys(BASE).filter(function(k){ return !validCover(BASE[k]) || k.indexOf('|') === -1; }).length;
-    $('loadMsg').textContent = 'Зареден е текущият covers.json от GitHub (' + Object.keys(BASE).length + ').' + (bad ? ' ⚠ ' + bad + ' реда са негодни – приложението ги пропуска.' : ''); showDraft(); renderList(); renderSongs(); renderMissing();
+    $('loadMsg').textContent = 'Зареден е текущият covers.json от GitHub (' + Object.keys(BASE).length + ').' + (bad ? ' ⚠ ' + bad + ' реда са негодни – приложението ги пропуска.' : ''); showDraft(); renderList(); renderSongs(); renderQuality();
   }).catch(function(){ BASE = {}; LIST = lget(DRAFT, {}) || {}; $('loadMsg').textContent = 'Няма качен covers.json' + (Object.keys(LIST).length ? ' – показвам неизкачените промени.' : ' – започваш с празен списък.'); showDraft(); renderList(); renderSongs(); });
-  $('dropDraft').onclick = function(){ if (!BASE) return; LIST = JSON.parse(JSON.stringify(BASE)); saveDraft(); renderList(); renderSongs(); renderMissing(); toast('Промените са отказани'); };
+  $('dropDraft').onclick = function(){ if (!BASE) return; LIST = JSON.parse(JSON.stringify(BASE)); saveDraft(); renderList(); renderSongs(); renderQuality(); toast('Промените са отказани'); };
 
   // ---- Списъкът с поправки се свива (по подразбиране – свит; помни се) ----
   (function(){
@@ -704,13 +866,13 @@
     });
   })();
 
-  renderMissing();
+  renderQuality();
   loadSongs(); renderSongs();
   // песни без отговор за обложката (страницата е била затворена по време на търсенето) – търсим пак
   // Песни без отговор (страницата е била затворена по време на търсенето, или денят е свит) – търсим пак, една по една (iTunes не обича много заявки наведнъж).
   (function(){ var q = songs.filter(function(it){ return it.auto === 'wait' || it.auto === 'err'; });
     (function next(){ var it = q.shift(); if (!it) return;
-      findArtwork(it.artist, it.title).then(function(u){ var a = u === undefined ? 'err' : (u || null); setArt(it.id, a); if (a === null) noteMissing(it); loadSongs(); renderSongs(); setTimeout(next, 1200); }); })(); })();
+      findArtwork(it.artist, it.title).then(function(u){ var a = u === undefined ? 'err' : (u || null); setArt(it.id, a); if (a === null) checkQuality(it, true); loadSongs(); renderSongs(); setTimeout(next, 1200); }); })(); })();
   poll(); setInterval(poll, 10000);
 })();
 </script>
