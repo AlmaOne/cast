@@ -128,6 +128,15 @@
     main.flip .info { text-align:center; }
     main.flip .live, main.flip .station, main.flip .dashes { justify-content:center; }
   }
+  /* v35 (31.10.2026) */
+  /* Стена от обложки (alma-wall.js): зад песента, над размития фон и под тъмния слой. */
+  #almaWall { position:fixed; left:0; top:0; pointer-events:none; transition:transform 60s ease-in-out; will-change:transform; }
+  #almaWall .t { position:absolute; overflow:hidden; border-radius:.7vmin; background:#2A1650; opacity:0;
+    transition:opacity 2.5s ease, transform .38s ease-in; }
+  #almaWall .t.on { opacity:.8; }
+  #almaWall .t.on.new { opacity:1; box-shadow:0 0 0 .3vmin rgba(255,255,255,.35); }
+  #almaWall .t.flip { transform:scaleX(0); transition:opacity 2.5s ease, transform .38s ease-out; }
+  #almaWall .t img { display:block; width:100%; height:100%; object-fit:cover; }
 </style>
 </head>
 <body>
@@ -248,6 +257,133 @@ window.SSide = (function () {
   }
   setInterval(function () { if (on() && Date.now() - lastAt > 15 * 60000) flip(null); }, 60000);
   return { art: art, flip: flip };
+})();
+</script>
+<!-- v35 (31.10.2026): стена от обложки зад песента (alma-wall.js, общ със скрийнсейвъра). -->
+<script>
+/* AlmaWall – стена от обложки (Радио Alma Mater). Общ за скрийнсейвъра и (по-късно) телевизора.
+   Зад песента постепенно се трупат обложките на звучалите песни, докато екранът стане стена.
+   – начало: последните песни от radioalmamater.bg/wp-json/alma/v1/now + запомнените от предишни пускания
+     (появяват се една по една, на 2,5 сек);
+   – нова песен: обложката ѝ се обръща на свободно място (или на най-старата плочка) и свети по-ярко 4 мин;
+   – против запичане: на 3 мин две плочки си разменят местата; на 10 мин цялата стена бавно се отмества.
+   СИГУРНОСТ: приемат се само адреси на картинки от Apple (mzstatic.com) и нашите (almaone.github.io/cast/covers/),
+   проверени с регулярен израз; показват се само в <img> (никакъв HTML/CSS от външни данни); отговорът от сайта
+   е с ограничен размер и се чете само като JSON. Изисква елементи #art и #bg. */
+window.AlmaWall = (function () {
+  'use strict';
+  var APPLE = /^https:\/\/[a-z0-9-]{1,40}\.mzstatic\.com\/image\/thumb\/[A-Za-z0-9\/._%+-]{1,400}\/\d{2,4}x\d{2,4}bb\.(jpg|jpeg|png|webp)$/i;
+  var OURS = /^https:\/\/almaone\.github\.io\/cast\/covers\/[A-Za-z0-9._-]{1,120}\.(?:jpe?g|png)$/i;
+  var NOW = 'https://radioalmamater.bg/wp-json/alma/v1/now';
+  var KEY = 'alma-wall', MAX = 240;
+  function clean(u) {
+    if (typeof u !== 'string' || u.length > 600) return null;
+    if (APPLE.test(u)) return u.replace(/\/\d{2,4}x\d{2,4}bb\.(jpg|jpeg|png|webp)$/i, '/300x300bb.$1'); // малки – за стената
+    if (OURS.test(u)) return u;
+    return null;
+  }
+  var list = [], cells = [], wall = null, size = 0, cols = 0, rows = 0, queue = [], started = false, enabled = true;
+  function load() {
+    try { var a = JSON.parse(localStorage.getItem(KEY) || '[]'); if (Array.isArray(a)) a.forEach(function (u) { u = clean(u); if (u && list.indexOf(u) < 0) list.push(u); }); } catch (e) {}
+    list = list.slice(-MAX);
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(list.slice(-MAX))); } catch (e) {} }
+  function remember(u) { var i = list.indexOf(u); if (i >= 0) list.splice(i, 1); list.push(u); if (list.length > MAX) list.shift(); save(); }
+  function shown(u) { for (var i = 0; i < cells.length; i++) if (cells[i].url === u) return cells[i]; return null; }
+
+  function build() {
+    var W = innerWidth, H = innerHeight, old = cells.filter(function (c) { return c.url; }).map(function (c) { return c.url; });
+    rows = H < W ? 6 : 9; size = Math.ceil(H / rows); cols = Math.ceil(W / size) + 1; rows += 1;
+    wall.textContent = ''; cells = [];
+    var gap = Math.max(2, Math.round(size * 0.04));
+    for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
+      var t = document.createElement('div'); t.className = 't';
+      t.style.left = (c * size + gap) + 'px'; t.style.top = (r * size + gap) + 'px';
+      t.style.width = t.style.height = (size - 2 * gap) + 'px';
+      var im = document.createElement('img'); im.alt = ''; im.decoding = 'async'; im.referrerPolicy = 'no-referrer'; t.appendChild(im);
+      wall.appendChild(t); cells.push({ el: t, img: im, url: null, at: 0 });
+    }
+    old.slice(-cells.length).forEach(function (u) { place(u, false, true); });
+  }
+  // Слага картинката на клетка: свободна (случайна) или най-старата. Обръщане като картичка.
+  function place(u, fresh, instant) {
+    if (!wall || !u) return;
+    var c = shown(u);
+    if (!c) {
+      var free = cells.filter(function (x) { return !x.url; });
+      if (free.length) c = free[Math.floor(Math.random() * free.length)];
+      else { c = cells[0]; cells.forEach(function (x) { if (x.at < c.at) c = x; }); }
+    }
+    var pre = new Image(); pre.referrerPolicy = 'no-referrer';
+    pre.onload = function () {
+      var go = function () {
+        c.img.src = u; c.url = u; c.at = Date.now();
+        c.el.classList.add('on'); c.el.classList.toggle('new', !!fresh); c.el.classList.remove('flip');
+        if (fresh) setTimeout(function () { if (c.url === u) c.el.classList.remove('new'); }, 4 * 60000);
+      };
+      if (instant || !c.url) go(); else { c.el.classList.add('flip'); setTimeout(go, 380); }
+    };
+    pre.src = u;
+  }
+  function seed() {
+    if (!queue.length) return;
+    place(queue.shift(), false);
+    setTimeout(seed, 2500);
+  }
+  // Последните песни от сайта – ограничен размер, само JSON, само проверени адреси.
+  function fromSite() {
+    var ctrl = new AbortController(), timer = setTimeout(function () { ctrl.abort(); }, 8000);
+    fetch(NOW, { signal: ctrl.signal, credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer' })
+      .then(function (r) { if (!r.ok) throw 0; return r.text(); })
+      .then(function (t) {
+        if (t.length > 200000) return;
+        var j = JSON.parse(t), got = [];
+        if (j && Array.isArray(j.recent)) j.recent.slice(0, 30).forEach(function (x) { var u = x && clean(x.artwork); if (u) got.push(u); });
+        got.reverse().forEach(function (u) { remember(u); if (!shown(u) && queue.indexOf(u) < 0) queue.unshift(u); });
+      })
+      .catch(function () {})
+      .finally(function () { clearTimeout(timer); });
+  }
+  // Нова песен: следим голямата обложка (#art) – щом е истинска обложка, отива на стената.
+  function watchArt() {
+    var art = document.getElementById('art'), last = null;
+    new MutationObserver(function () {
+      if (!enabled || art.classList.contains('logo')) return;
+      var u = clean(art.getAttribute('src') || '');
+      if (!u || u === last) return;
+      last = u; remember(u); place(u, true);
+    }).observe(art, { attributes: true, attributeFilter: ['src', 'class'] });
+  }
+  function antiBurn() {
+    setInterval(function () { // две плочки си разменят местата
+      var f = cells.filter(function (c) { return c.url; }); if (f.length < 2) return;
+      var a = f[Math.floor(Math.random() * f.length)], b = f[Math.floor(Math.random() * f.length)]; if (a === b) return;
+      [a, b].forEach(function (c) { c.el.classList.add('flip'); });
+      setTimeout(function () {
+        var ua = a.url, ub = b.url, ta = a.at, tb = b.at;
+        a.url = ub; a.img.src = ub; a.at = tb; b.url = ua; b.img.src = ua; b.at = ta;
+        [a, b].forEach(function (c) { c.el.classList.remove('flip'); });
+      }, 380);
+    }, 3 * 60000);
+    setInterval(shift, 10 * 60000);
+  }
+  function shift() { if (wall) wall.style.transform = 'translate(' + Math.round(-Math.random() * size) + 'px,' + Math.round(-Math.random() * size) + 'px)'; }
+
+  function start(opts) {
+    if (started) return; started = true;
+    enabled = !opts || opts.enabled !== false;
+    if (!enabled) return;
+    var bg = document.getElementById('bg');
+    wall = document.createElement('div'); wall.id = 'almaWall'; wall.setAttribute('aria-hidden', 'true');
+    bg.parentNode.insertBefore(wall, bg.nextSibling);
+    load(); build(); shift();
+    queue = list.slice().reverse(); // най-новите първо
+    fromSite();
+    setTimeout(seed, 1500);
+    watchArt(); antiBurn();
+    var rt = null; addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(build, 400); });
+  }
+  return { start: start, clean: clean };
 })();
 </script>
 <script>
@@ -860,7 +996,7 @@ window.SSide = (function () {
       diagLog.push(t + ' ' + name);
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
-    diag('v34');
+    diag('v35');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
@@ -963,6 +1099,7 @@ window.SSide = (function () {
     setPlaying(true);
   }
   show(null, null, false); // начален фон – размитото лого
+  try { AlmaWall.start(); } catch (e) {} // v35: стената от обложки
   // Песента и обложката – чак когато звукът тръгне: заявката за песента е към същия сървър
   // като звука и го задържаше (звукът тръгваше точно 8 сек след като я прекъснехме).
   // Резервно – след 30 сек, ако по някаква причина не свири.
