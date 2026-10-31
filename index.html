@@ -118,6 +118,16 @@
   @media (max-height: 520px) and (min-aspect-ratio: 4/3) {
     #title { font-size:9vmin; } #artist { font-size:5.6vmin; } .station { display:none; }
   }
+  /* v34 (31.10.2026) */
+  /* Смяна на страната (против запичане): обложката ту вляво, ту вдясно; надписите – откъм обложката. */
+  main.flip { flex-direction:row-reverse; }
+  main.flip .info { text-align:right; }
+  main.flip .live, main.flip .station, main.flip .dashes { justify-content:flex-end; }
+  @media (max-aspect-ratio: 4/3) {
+    main.flip { flex-direction:column-reverse; }
+    main.flip .info { text-align:center; }
+    main.flip .live, main.flip .station, main.flip .dashes { justify-content:center; }
+  }
 </style>
 </head>
 <body>
@@ -204,6 +214,42 @@
 })(window);
 </script>
 
+<!-- v34 (31.10.2026): смяна на страната ляво ↔ дясно при нова песен и на 15 мин (alma-side.js, общ със скрийнсейвъра). -->
+<script>
+/* AlmaSide – смяна на страната (ляво ↔ дясно) срещу запичане на екрана (Радио Alma Mater).
+   Общ за телевизора (cast-receiver/index.html) и скрийнсейвъра. Иска #float и #main и AlmaFade (alma-fade.js);
+   CSS-ът е в alma-side.css. Без нова песен 15 мин – също сменя страната. */
+/* Смяна на страната: при нова песен целият блок избледнява и се появява огледално от другата страна.
+   Без нова песен 15 мин (дълго предаване/дълга песен) – също. При „намалено движение“ – веднага, без избледняване. */
+window.SSide = (function () {
+  var lastKey = null, lastAt = Date.now(), busy = false;
+  // Скрийнсейвърът може да я изключи (SS.side); на телевизора е винаги включена.
+  function on() { return window.SS ? SS.side !== false : true; }
+  function reduced() { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
+  function flip(apply) {
+    var fl = document.getElementById('float'), m = document.getElementById('main');
+    lastAt = Date.now();
+    if (busy) { if (apply) apply(); return; }
+    if (reduced()) { m.classList.toggle('flip'); if (apply) apply(); return; }
+    busy = true;
+    fl.style.transition = 'opacity .8s ease'; fl.style.opacity = '0';
+    setTimeout(function () {
+      m.classList.toggle('flip');
+      if (apply) apply();
+      setTimeout(function () { fl.style.opacity = '1'; setTimeout(function () { busy = false; }, 850); }, 120);
+    }, 850);
+  }
+  function art(img, song, apply, ms) {
+    var key = song ? ((song.artist || '') + '|' + (song.title || '')).toLowerCase() : '';
+    var changed = lastKey !== null && key !== lastKey;
+    lastKey = key;
+    if (changed && on()) flip(apply);
+    else AlmaFade.swap(img, apply, ms);
+  }
+  setInterval(function () { if (on() && Date.now() - lastAt > 15 * 60000) flip(null); }, 60000);
+  return { art: art, flip: flip };
+})();
+</script>
 <script>
 (function () {
   'use strict';
@@ -606,12 +652,12 @@
       var pre = new Image();
       pre.onload = function () {
         if (seq !== showSeq) return; // междувременно е дошла друга песен – не слагаме старата обложка
-        AlmaFade.swap(img, function () { img.src = art; img.classList.remove('logo'); }, 1600);
+        SSide.art(img, song, function () { img.src = art; img.classList.remove('logo'); }, 1600);
         AlmaFade.swap($('bg'), function () { $('bg').style.backgroundImage = 'url("' + art + '")'; $('bg').classList.remove('logo'); $('bg').classList.add('on'); }, 2200);
       };
       pre.onerror = function () {
         if (seq !== showSeq) return;
-        AlmaFade.swap(img, function () { img.src = currentLogo(); img.classList.add('logo'); }, 1600); // обложката не се зареди – логото
+        SSide.art(img, song, function () { img.src = currentLogo(); img.classList.add('logo'); }, 1600); // обложката не се зареди – логото
         AlmaFade.swap($('bg'), function () { $('bg').style.backgroundImage = 'url("' + LOGO + '")'; $('bg').classList.add('on', 'logo'); }, 2200);
       };
       pre.src = art;
@@ -619,7 +665,7 @@
       // v33: докато новата обложка се търси – старата остава (без прескачане обложка → лого → обложка).
       if (pending) return;
       if (img.classList.contains('logo') && img.getAttribute('src') === currentLogo() && $('bg').classList.contains('logo')) return; // вече е логото
-      AlmaFade.swap(img, function () { img.src = currentLogo(); img.classList.add('logo'); }, 1600);
+      SSide.art(img, song, function () { img.src = currentLogo(); img.classList.add('logo'); }, 1600);
       AlmaFade.swap($('bg'), function () { $('bg').style.backgroundImage = 'url("' + LOGO + '")'; $('bg').classList.add('on', 'logo'); }, 2200);
     }
   }
@@ -814,7 +860,7 @@
       diagLog.push(t + ' ' + name);
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
-    diag('v33');
+    diag('v34');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
