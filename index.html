@@ -73,6 +73,7 @@
   .station { margin-top:6vmin; font-size:2.8vmin; font-weight:700; color:var(--muted); display:flex; align-items:center; gap:1.6vmin;
     transition:opacity .3s ease; white-space:nowrap; }
   /* Редът с „+“ и името се показва за малко при нова песен, после изчезва (против запичане). */
+  .station { transition:opacity 1.2s ease; } /* v38: появява се плавно */
   .station.off { opacity:0; transition:opacity 2s ease; }
   /* Буквите „пристигат“ като на табло на гара (без плочки – само буквите). */
   #stationText { display:flex; }
@@ -412,6 +413,7 @@ window.AlmaWall = (function () {
   return { start: start, clean: clean };
 })();
 </script>
+<!-- v38 (31.10.2026): без превъртане на буквите (табло) – само плавно избледняване. -->
 <!-- v37 (31.10.2026): гладко на телевизора – буквите на един таймер, сиянието само избледнява, стената тръгва по-късно. -->
 <!-- v36 (31.10.2026): без песен – без голямото лого, надписите се разхождат, цветно сияние (alma-roam.js); първата обложка – отляво. -->
 <script>
@@ -518,31 +520,10 @@ window.AlmaRoam = (function () {
   // „СЕГА“ (или „СПРЯНО“) – буквите се превъртат като на табло и спират на мястото си.
   // Буквите на един ред се превъртат като на табло и спират на мястото си.
   // final() дава какво да пише накрая (ако междувременно надписът се е сменил – не го пипаме).
+  // v38: без превъртане на буквите – надписът просто е какъвто трябва да е (смяната е с избледняване).
   function flapText(el, final) {
-    var text = el.textContent, POOL = 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЮЯABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    if (!text) return;
-    el.innerHTML = '';
-    // v37: един таймер за всички букви (по-леко за телевизора) – изглежда същото.
-    var first = null, items = [], t0 = Date.now();
-    for (var i = 0; i < text.length; i++) {
-      var t = text[i], sp = document.createElement('span');
-      sp.style.display = 'inline-block'; sp.style.textAlign = 'center';
-      sp.textContent = t === ' ' ? '\u00a0' : t; el.appendChild(sp);
-      if (!first) first = sp;
-      if (t === ' ' || t === '·') continue;
-      items.push({ el: sp, t: t, at: i * 90, n: 0, flips: 10 + Math.floor(Math.random() * 7), done: false });
-    }
-    var iv = setInterval(function () {
-      var now = Date.now() - t0, left = 0;
-      for (var k = 0; k < items.length; k++) {
-        var it = items[k]; if (it.done) continue; left++;
-        if (now < it.at) continue;
-        if (++it.n >= it.flips) { it.el.textContent = it.t; it.done = true; left--; continue; }
-        it.el.textContent = /[0-9]/.test(it.t) ? String(Math.floor(Math.random() * 10)) : POOL[Math.floor(Math.random() * POOL.length)];
-      }
-      if (!left) { clearInterval(iv); if (el.firstChild === first) el.textContent = final ? final() : text; }
-    }, 75);
-    return 90 * text.length + 1300; // приблизително колко трае
+    if (final) { var f = final(); if (el.textContent !== f) el.textContent = f; }
+    return 0;
   }
   // Ред по ред: „СЕГА“ → заглавието → „88 MHz · София“.
   // Заглавието и изпълнителят се превъртат САМО при дълго предаване (без песен над 10 мин, логото на екрана).
@@ -610,30 +591,10 @@ window.AlmaRoam = (function () {
   var STATION_LINE = STATION + ' · ' + FREQ;
   var FLAP_POOL = 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЮЯABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   // Буквите се появяват отляво надясно; всяка прехвърля 8–13 знака и спира на мястото си (~3 сек общо).
+  // v38: редът „Радио Alma Mater · 88 MHz · София“ – без превъртане на буквите; появява се с избледняване.
   function arriveStation() {
     flapTimers.forEach(function (t) { clearTimeout(t); clearInterval(t); }); flapTimers = [];
-    var box = $('stationText'); box.innerHTML = '';
-    // v37: един таймер за всички букви (по-леко за телевизора) – изглежда същото.
-    var items = [], t0 = Date.now();
-    for (var i = 0; i < STATION_LINE.length; i++) {
-      var target = STATION_LINE[i], ch = document.createElement('span');
-      ch.className = 'ch';
-      ch.textContent = '\u00a0'; box.appendChild(ch);
-      if (target === ' ') continue;
-      items.push({ el: ch, t: target, at: i * 60, n: 0, flips: 8 + Math.floor(Math.random() * 6), done: false });
-    }
-    var iv = setInterval(function () {
-      var now = Date.now() - t0, left = 0;
-      for (var k = 0; k < items.length; k++) {
-        var it = items[k]; if (it.done) continue; left++;
-        if (now < it.at) continue;
-        if (++it.n >= it.flips) { it.el.textContent = it.t; it.done = true; left--; continue; }
-        it.el.textContent = it.t === '·' ? '·' : /[0-9]/.test(it.t)
-          ? String(Math.floor(Math.random() * 10)) : FLAP_POOL[Math.floor(Math.random() * FLAP_POOL.length)];
-      }
-      if (!left) clearInterval(iv);
-    }, 75);
-    flapTimers.push(iv);
+    var box = $('stationText'); if (box.textContent !== STATION_LINE) box.textContent = STATION_LINE;
   }
   function flashStation(on) {
     clearTimeout(stationTimer);
@@ -1091,7 +1052,7 @@ window.AlmaRoam = (function () {
       diagLog.push(t + ' ' + name);
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
-    diag('v37');
+    diag('v38');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
