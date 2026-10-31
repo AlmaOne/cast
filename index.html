@@ -137,7 +137,29 @@
   #almaWall .t.on.new { opacity:1; box-shadow:0 0 0 .3vmin rgba(255,255,255,.35); }
   #almaWall .t.flip { transform:scaleX(0); transition:opacity 2.5s ease, transform .38s ease-out; }
   #almaWall .t img { display:block; width:100%; height:100%; object-fit:cover; }
+  /* v36 (31.10.2026) */
+  /* AlmaRoam (alma-roam.js): когато няма песен, голямото лого не се показва – надписите, малки, се разхождат
+     по целия екран, а във фона плува меко сияние в цветовете на чертичките (против запичане). */
+  @property --gc { syntax:'<color>'; inherits:false; initial-value:#4C8DFF; }
+  html.roam #float, html.roam #main { animation:none !important; }
+  html.roam main { position:absolute; left:0; top:0; height:auto; width:max-content; max-width:80vw; padding:0; gap:3vmin;
+    transition:transform 25s ease-in-out; will-change:transform; }
+  html.roam #art { display:none !important; }
+  html.roam main:not(.placed) { visibility:hidden; } /* докато не е избрано първото място – да не мигне горе вляво */
+  html.roam #bg { opacity:0 !important; }
+  /* Сиянието: радиален преход (без filter:blur – по-леко за Chromecast); цветът се сменя плавно (--gc). */
+  #almaGlow { position:fixed; left:0; top:0; width:80vmax; height:80vmax; pointer-events:none; opacity:0; will-change:transform;
+    background:radial-gradient(circle closest-side, var(--gc) 0%, transparent 100%);
+    transition:opacity 3s ease, --gc 12s ease, transform 30s ease-in-out; }
+  html.roam #almaGlow { opacity:.38; }
+  html.roam .info { flex:none; max-width:46vw; }
+  html.roam #title { font-size:5vmin; margin-top:1.2vmin; }
+  html.roam #artist { font-size:3.2vmin; margin-top:.8vmin; }
+  html.roam .live { font-size:1.9vmin; }
+  html.roam .dashes { margin-bottom:1.3vmin; } html.roam .dashes i { width:3vmin; height:.5vmin; }
+  html.roam .station { margin-top:2.6vmin; font-size:1.9vmin; } html.roam .station img { width:3.6vmin; height:3.6vmin; }
 </style>
+<script>document.documentElement.classList.add('roam'); /* v36: от първия кадър – без голямото лого */</script>
 </head>
 <body>
 <div id="bg"></div><div id="shade"></div>
@@ -248,12 +270,14 @@ window.SSide = (function () {
       setTimeout(function () { fl.style.opacity = '1'; setTimeout(function () { busy = false; }, 850); }, 120);
     }, 850);
   }
+  var hadSong = false; // при старт първата обложка е винаги отляво – смяната на страната започва от втората песен
   function art(img, song, apply, ms) {
     var key = song ? ((song.artist || '') + '|' + (song.title || '')).toLowerCase() : '';
     var changed = lastKey !== null && key !== lastKey;
     lastKey = key;
-    if (changed && on()) flip(apply);
+    if (changed && hadSong && on()) flip(apply);
     else AlmaFade.swap(img, apply, ms);
+    if (key) hadSong = true;
   }
   setInterval(function () { if (on() && Date.now() - lastAt > 15 * 60000) flip(null); }, 60000);
   return { art: art, flip: flip };
@@ -384,6 +408,63 @@ window.AlmaWall = (function () {
     var rt = null; addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(build, 400); });
   }
   return { start: start, clean: clean };
+})();
+</script>
+<!-- v36 (31.10.2026): без песен – без голямото лого, надписите се разхождат, цветно сияние (alma-roam.js); първата обложка – отляво. -->
+<script>
+/* AlmaRoam – когато няма песен (на екрана би било само логото), Радио Alma Mater:
+   – голямото лого не се показва (още от първия кадър – <html class="roam"> се слага в <head>);
+   – надписите, малки, се разхождат по целия екран (на 25 сек – към ново случайно място, без спиране);
+   – фонът е меко сияние, което на 15 сек минава към следващия цвят от чертичките и на 30 сек се мести.
+   Щом дойде песен с обложка – всичко се връща в нормалния вид. Общ за телевизора и скрийнсейвъра.
+   Изисква #main, #float, #art, #shade. */
+window.AlmaRoam = (function () {
+  'use strict';
+  var started = false;
+  function start() {
+    if (started) return; started = true;
+    var $ = function (id) { return document.getElementById(id); };
+    var root = document.documentElement, m = $('main'), fl = $('float'), art = $('art'), timer = null, first = true;
+    var g = document.createElement('div'); g.id = 'almaGlow'; g.setAttribute('aria-hidden', 'true');
+    var shade = $('shade'); shade.parentNode.insertBefore(g, shade.nextSibling);
+    function isLogo() { return art.classList.contains('logo'); }
+    function go(now) {
+      if (!root.classList.contains('roam')) return;
+      var W = innerWidth, H = innerHeight, w = m.offsetWidth, h = m.offsetHeight;
+      var top = H * 0.17; // под часовника
+      var x = W * 0.03 + Math.random() * Math.max(0, W - w - W * 0.06);
+      var y = top + Math.random() * Math.max(0, H - h - top - H * 0.05);
+      if (now) m.style.transition = 'none';
+      m.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)'; m.classList.add('placed');
+      if (now) { void m.offsetWidth; m.style.transition = ''; }
+    }
+    function set(on, instant) {
+      if (!first && on === root.classList.contains('roam')) return;
+      first = false;
+      var apply = function () {
+        root.classList.toggle('roam', on);
+        clearInterval(timer);
+        if (on) { go(true); setTimeout(go, 60); timer = setInterval(go, 25000); }
+        else { m.style.transition = ''; m.style.transform = ''; m.classList.remove('placed'); }
+      };
+      if (instant || parseFloat(getComputedStyle(fl).opacity) < 0.5) { apply(); return; } // начало или вече скрито (смяна на страната)
+      fl.style.transition = 'opacity .7s ease'; fl.style.opacity = '0';
+      setTimeout(function () { apply(); fl.style.opacity = '1'; }, 720);
+    }
+    new MutationObserver(function () { set(isLogo()); }).observe(art, { attributes: true, attributeFilter: ['class'] });
+    set(isLogo(), true);
+    var COLORS = ['#FF8A1F', '#19C2A8', '#F0479A', '#F7B500', '#4C8DFF'], ci = Math.floor(Math.random() * 5);
+    function glowMove() {
+      var W = innerWidth, H = innerHeight, d = Math.max(W, H) * 0.8;
+      g.style.transform = 'translate(' + Math.round(-d * 0.3 + Math.random() * (W - d * 0.4)) + 'px,' + Math.round(-d * 0.3 + Math.random() * (H - d * 0.4)) + 'px)';
+    }
+    function glowColor() { ci = (ci + 1) % COLORS.length; g.style.setProperty('--gc', COLORS[ci]); }
+    g.style.transition = 'none'; g.style.setProperty('--gc', COLORS[ci]); glowMove(); void g.offsetWidth; g.style.transition = '';
+    setInterval(function () { if (root.classList.contains('roam')) glowColor(); }, 15000);
+    setInterval(function () { if (root.classList.contains('roam')) glowMove(); }, 30000);
+    addEventListener('resize', function () { go(true); });
+  }
+  return { start: start };
 })();
 </script>
 <script>
@@ -996,7 +1077,7 @@ window.AlmaWall = (function () {
       diagLog.push(t + ' ' + name);
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
-    diag('v35');
+    diag('v36');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
@@ -1100,6 +1181,7 @@ window.AlmaWall = (function () {
   }
   show(null, null, false); // начален фон – размитото лого
   try { AlmaWall.start(); } catch (e) {} // v35: стената от обложки
+  try { AlmaRoam.start(); } catch (e) {} // v36: без песен – без логото
   // Песента и обложката – чак когато звукът тръгне: заявката за песента е към същия сървър
   // като звука и го задържаше (звукът тръгваше точно 8 сек след като я прекъснехме).
   // Резервно – след 30 сек, ако по някаква причина не свири.
