@@ -140,18 +140,19 @@
   /* v36 (31.10.2026) */
   /* AlmaRoam (alma-roam.js): когато няма песен, голямото лого не се показва – надписите, малки, се разхождат
      по целия екран, а във фона плува меко сияние в цветовете на чертичките (против запичане). */
-  @property --gc { syntax:'<color>'; inherits:false; initial-value:#4C8DFF; }
   html.roam #float, html.roam #main { animation:none !important; }
   html.roam main { position:absolute; left:0; top:0; height:auto; width:max-content; max-width:80vw; padding:0; gap:3vmin;
     transition:transform 25s ease-in-out; will-change:transform; }
   html.roam #art { display:none !important; }
   html.roam main:not(.placed) { visibility:hidden; } /* докато не е избрано първото място – да не мигне горе вляво */
   html.roam #bg { opacity:0 !important; }
-  /* Сиянието: радиален преход (без filter:blur – по-леко за Chromecast); цветът се сменя плавно (--gc). */
+  /* Сиянието: радиален преход (без filter:blur). Цветът се сменя с два слоя, които само избледняват
+     (opacity/transform – прави ги видеокартата, без прерисуване на всеки кадър; леко за Chromecast). */
   #almaGlow { position:fixed; left:0; top:0; width:80vmax; height:80vmax; pointer-events:none; opacity:0; will-change:transform;
-    background:radial-gradient(circle closest-side, var(--gc) 0%, transparent 100%);
-    transition:opacity 3s ease, --gc 12s ease, transform 30s ease-in-out; }
+    transition:opacity 3s ease, transform 30s ease-in-out; }
   html.roam #almaGlow { opacity:.38; }
+  #almaGlow i { position:absolute; inset:0; opacity:0; transition:opacity 10s ease; will-change:opacity; }
+  #almaGlow i.on { opacity:1; }
   html.roam .info { flex:none; max-width:46vw; }
   html.roam #title { font-size:5vmin; margin-top:1.2vmin; }
   html.roam #artist { font-size:3.2vmin; margin-top:.8vmin; }
@@ -222,7 +223,8 @@
   function swap(el, change, ms) {
     ms = ms || 1500;
     var g = null;
-    if (el && !reduced()) { try { g = ghostOf(el); } catch (e) { g = null; } }
+    // Невидим елемент (напр. скритият фон, когато няма песен) – без копие: излишна тежест за телевизора.
+    if (el && !reduced() && parseFloat(w.getComputedStyle(el).opacity) > 0.01) { try { g = ghostOf(el); } catch (e) { g = null; } }
     if (g) {
       // Пряко дете на <body> – копието влиза веднага след него (същият ред на слоевете).
       // Иначе – най-отгоре (родител с transform би изместил position:fixed).
@@ -352,7 +354,7 @@ window.AlmaWall = (function () {
   function seed() {
     if (!queue.length) return;
     place(queue.shift(), false);
-    setTimeout(seed, 2500);
+    setTimeout(seed, 3000);
   }
   // Последните песни от сайта – ограничен размер, само JSON, само проверени адреси.
   function fromSite() {
@@ -402,14 +404,15 @@ window.AlmaWall = (function () {
     bg.parentNode.insertBefore(wall, bg.nextSibling);
     load(); build(); shift();
     queue = list.slice().reverse(); // най-новите първо
-    fromSite();
-    setTimeout(seed, 1500);
+    setTimeout(fromSite, 4000);   // по-късно – началото (буквите, обложката) да мине гладко
+    setTimeout(seed, 7000);
     watchArt(); antiBurn();
     var rt = null; addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(build, 400); });
   }
   return { start: start, clean: clean };
 })();
 </script>
+<!-- v37 (31.10.2026): гладко на телевизора – буквите на един таймер, сиянието само избледнява, стената тръгва по-късно. -->
 <!-- v36 (31.10.2026): без песен – без голямото лого, надписите се разхождат, цветно сияние (alma-roam.js); първата обложка – отляво. -->
 <script>
 /* AlmaRoam – когато няма песен (на екрана би било само логото), Радио Alma Mater:
@@ -426,6 +429,8 @@ window.AlmaRoam = (function () {
     var $ = function (id) { return document.getElementById(id); };
     var root = document.documentElement, m = $('main'), fl = $('float'), art = $('art'), timer = null, first = true;
     var g = document.createElement('div'); g.id = 'almaGlow'; g.setAttribute('aria-hidden', 'true');
+    var layers = [document.createElement('i'), document.createElement('i')], li = 0;
+    layers.forEach(function (l) { g.appendChild(l); });
     var shade = $('shade'); shade.parentNode.insertBefore(g, shade.nextSibling);
     function isLogo() { return art.classList.contains('logo'); }
     function go(now) {
@@ -458,8 +463,11 @@ window.AlmaRoam = (function () {
       var W = innerWidth, H = innerHeight, d = Math.max(W, H) * 0.8;
       g.style.transform = 'translate(' + Math.round(-d * 0.3 + Math.random() * (W - d * 0.4)) + 'px,' + Math.round(-d * 0.3 + Math.random() * (H - d * 0.4)) + 'px)';
     }
-    function glowColor() { ci = (ci + 1) % COLORS.length; g.style.setProperty('--gc', COLORS[ci]); }
-    g.style.transition = 'none'; g.style.setProperty('--gc', COLORS[ci]); glowMove(); void g.offsetWidth; g.style.transition = '';
+    function paint(l, c) { l.style.background = 'radial-gradient(circle closest-side, ' + c + ' 0%, transparent 100%)'; }
+    // Нов цвят: рисува се веднъж на скрития слой, после двата слоя си разменят видимостта (само избледняване).
+    function glowColor() { ci = (ci + 1) % COLORS.length; var nx = layers[1 - li]; paint(nx, COLORS[ci]); nx.classList.add('on'); layers[li].classList.remove('on'); li = 1 - li; }
+    paint(layers[0], COLORS[ci]); layers[0].style.transition = 'none'; layers[0].classList.add('on'); void g.offsetWidth; layers[0].style.transition = '';
+    g.style.transition = 'none'; glowMove(); void g.offsetWidth; g.style.transition = '';
     setInterval(function () { if (root.classList.contains('roam')) glowColor(); }, 15000);
     setInterval(function () { if (root.classList.contains('roam')) glowMove(); }, 30000);
     addEventListener('resize', function () { go(true); });
@@ -514,26 +522,26 @@ window.AlmaRoam = (function () {
     var text = el.textContent, POOL = 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЮЯABCDEFGHIJKLMNOPQRSTUVWXYZ';
     if (!text) return;
     el.innerHTML = '';
-    var first = null, done = 0, letters = 0;
-    for (var i = 0; i < text.length; i++) (function (i) {
+    // v37: един таймер за всички букви (по-леко за телевизора) – изглежда същото.
+    var first = null, items = [], t0 = Date.now();
+    for (var i = 0; i < text.length; i++) {
       var t = text[i], sp = document.createElement('span');
       sp.style.display = 'inline-block'; sp.style.textAlign = 'center';
       sp.textContent = t === ' ' ? '\u00a0' : t; el.appendChild(sp);
       if (!first) first = sp;
-      if (t === ' ' || t === '·') return;
-      letters++;
-      var n = 0, flips = 10 + Math.floor(Math.random() * 7);
-      setTimeout(function () {
-        var iv = setInterval(function () {
-          if (++n >= flips) {
-            sp.textContent = t; clearInterval(iv);
-            if (++done === letters && el.firstChild === first) el.textContent = final ? final() : text;
-            return;
-          }
-          sp.textContent = /[0-9]/.test(t) ? String(Math.floor(Math.random() * 10)) : POOL[Math.floor(Math.random() * POOL.length)];
-        }, 75);
-      }, i * 90);
-    })(i);
+      if (t === ' ' || t === '·') continue;
+      items.push({ el: sp, t: t, at: i * 90, n: 0, flips: 10 + Math.floor(Math.random() * 7), done: false });
+    }
+    var iv = setInterval(function () {
+      var now = Date.now() - t0, left = 0;
+      for (var k = 0; k < items.length; k++) {
+        var it = items[k]; if (it.done) continue; left++;
+        if (now < it.at) continue;
+        if (++it.n >= it.flips) { it.el.textContent = it.t; it.done = true; left--; continue; }
+        it.el.textContent = /[0-9]/.test(it.t) ? String(Math.floor(Math.random() * 10)) : POOL[Math.floor(Math.random() * POOL.length)];
+      }
+      if (!left) { clearInterval(iv); if (el.firstChild === first) el.textContent = final ? final() : text; }
+    }, 75);
     return 90 * text.length + 1300; // приблизително колко трае
   }
   // Ред по ред: „СЕГА“ → заглавието → „88 MHz · София“.
@@ -605,21 +613,27 @@ window.AlmaRoam = (function () {
   function arriveStation() {
     flapTimers.forEach(function (t) { clearTimeout(t); clearInterval(t); }); flapTimers = [];
     var box = $('stationText'); box.innerHTML = '';
-    for (var i = 0; i < STATION_LINE.length; i++) (function (i) {
+    // v37: един таймер за всички букви (по-леко за телевизора) – изглежда същото.
+    var items = [], t0 = Date.now();
+    for (var i = 0; i < STATION_LINE.length; i++) {
       var target = STATION_LINE[i], ch = document.createElement('span');
       ch.className = 'ch';
       ch.textContent = '\u00a0'; box.appendChild(ch);
-      if (target === ' ') return;
-      var flips = 8 + Math.floor(Math.random() * 6), n = 0;
-      flapTimers.push(setTimeout(function () {
-        var iv = setInterval(function () {
-          if (++n >= flips) { ch.textContent = target; clearInterval(iv); return; }
-          ch.textContent = target === '·' ? '·' : /[0-9]/.test(target)
-            ? String(Math.floor(Math.random() * 10)) : FLAP_POOL[Math.floor(Math.random() * FLAP_POOL.length)];
-        }, 75);
-        flapTimers.push(iv);
-      }, i * 60));
-    })(i);
+      if (target === ' ') continue;
+      items.push({ el: ch, t: target, at: i * 60, n: 0, flips: 8 + Math.floor(Math.random() * 6), done: false });
+    }
+    var iv = setInterval(function () {
+      var now = Date.now() - t0, left = 0;
+      for (var k = 0; k < items.length; k++) {
+        var it = items[k]; if (it.done) continue; left++;
+        if (now < it.at) continue;
+        if (++it.n >= it.flips) { it.el.textContent = it.t; it.done = true; left--; continue; }
+        it.el.textContent = it.t === '·' ? '·' : /[0-9]/.test(it.t)
+          ? String(Math.floor(Math.random() * 10)) : FLAP_POOL[Math.floor(Math.random() * FLAP_POOL.length)];
+      }
+      if (!left) clearInterval(iv);
+    }, 75);
+    flapTimers.push(iv);
   }
   function flashStation(on) {
     clearTimeout(stationTimer);
@@ -1077,7 +1091,7 @@ window.AlmaRoam = (function () {
       diagLog.push(t + ' ' + name);
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
-    diag('v36');
+    diag('v37');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
