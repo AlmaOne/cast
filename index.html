@@ -131,29 +131,28 @@
   }
   /* v35 (31.10.2026) */
   /* Стена от обложки (alma-wall.js): зад песента, над размития фон и под тъмния слой. */
-  #almaWall { position:fixed; left:0; top:0; pointer-events:none; transition:transform 60s ease-in-out; will-change:transform; }
+  #almaWall { position:fixed; left:0; top:0; pointer-events:none; will-change:transform; } /* отместването – на стъпки (2/сек) */
   #almaWall .t { position:absolute; overflow:hidden; border-radius:.7vmin; background:#2A1650; opacity:0;
-    transition:opacity 2.5s ease, transform .38s ease-in; }
+    transition:opacity 1.2s ease, transform .38s ease-in; }
   #almaWall .t.on { opacity:.8; }
   #almaWall .t.on.new { opacity:1; box-shadow:0 0 0 .3vmin rgba(255,255,255,.35); }
-  #almaWall .t.flip { transform:scaleX(0); transition:opacity 2.5s ease, transform .38s ease-out; }
+  #almaWall .t.flip { transform:scaleX(0); transition:opacity 1.2s ease, transform .38s ease-out; }
   #almaWall .t img { display:block; width:100%; height:100%; object-fit:cover; }
   /* v36 (31.10.2026) */
   /* AlmaRoam (alma-roam.js): когато няма песен, голямото лого не се показва – надписите, малки, се разхождат
      по целия екран, а във фона плува меко сияние в цветовете на чертичките (против запичане). */
   html.roam #float, html.roam #main { animation:none !important; }
   html.roam main { position:absolute; left:0; top:0; height:auto; width:max-content; max-width:80vw; padding:0; gap:3vmin;
-    transition:transform 25s ease-in-out; will-change:transform; }
+    will-change:transform; } /* движението – на стъпки от alma-roam.js (10 кадъра/сек), не CSS преход */
   html.roam #art { display:none !important; }
   html.roam main:not(.placed) { visibility:hidden; } /* докато не е избрано първото място – да не мигне горе вляво */
   html.roam #bg { opacity:0 !important; }
   /* Сиянието: радиален преход (без filter:blur). Цветът се сменя с два слоя, които само избледняват
      (opacity/transform – прави ги видеокартата, без прерисуване на всеки кадър; леко за Chromecast). */
   #almaGlow { position:fixed; left:0; top:0; width:80vmax; height:80vmax; pointer-events:none; opacity:0; will-change:transform;
-    transition:opacity 3s ease, transform 30s ease-in-out; }
+    transition:opacity 3s ease; } /* местенето и смяната на цвета – на стъпки от alma-roam.js (4 кадъра/сек) */
   html.roam #almaGlow { opacity:.38; }
-  #almaGlow i { position:absolute; inset:0; opacity:0; transition:opacity 10s ease; will-change:opacity; }
-  #almaGlow i.on { opacity:1; }
+  #almaGlow i { position:absolute; inset:0; opacity:0; will-change:opacity; }
   html.roam .info { flex:none; max-width:46vw; }
   html.roam #title { font-size:5vmin; margin-top:1.2vmin; }
   html.roam #artist { font-size:3.2vmin; margin-top:.8vmin; }
@@ -162,6 +161,11 @@
   html.roam .station { margin-top:2.6vmin; font-size:1.9vmin; } html.roam .station img { width:3.6vmin; height:3.6vmin; }
   /* v39 (01.11.2026): надписите на телевизора – 75% от предишния размер (обложката и часовникът – без промяна). */
   .info { zoom:.75; }
+  /* v40 (01.11.2026): обикалянето – на стъпки от alma-calm.js, не CSS анимация с 60 кадъра/сек. */
+  html.calm #float, html.calm #main { animation:none !important; will-change:transform; }
+  /* v40: обложката на телевизора – 75% от предишния размер (като надписите от v39). */
+  #art { width:min(43.5vh,30vw); height:min(43.5vh,30vw); }
+  @media (max-aspect-ratio: 4/3) { #art { width:27vh; height:27vh; } }
 </style>
 <script>document.documentElement.classList.add('roam'); /* v36: от първия кадър – без голямото лого */</script>
 </head>
@@ -396,7 +400,20 @@ window.AlmaWall = (function () {
     }, 3 * 60000);
     setInterval(shift, 10 * 60000);
   }
-  function shift() { if (wall) wall.style.transform = 'translate(' + Math.round(-Math.random() * size) + 'px,' + Math.round(-Math.random() * size) + 'px)'; }
+  // Отместване на цялата стена: 60 сек до новото място, на стъпки 2 пъти в секунда (пести компютъра).
+  var wpos = [0, 0], wiv = null;
+  function shift(now) {
+    if (!wall) return;
+    var to = [-Math.random() * size, -Math.random() * size], from = wpos.slice(), t0 = Date.now();
+    function at(p) { wpos = p; wall.style.transform = 'translate3d(' + Math.round(p[0]) + 'px,' + Math.round(p[1]) + 'px,0)'; }
+    clearInterval(wiv);
+    if (now === true) { at(to); return; }
+    wiv = setInterval(function () {
+      var k = Math.min(1, (Date.now() - t0) / 60000), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      at([from[0] + (to[0] - from[0]) * e, from[1] + (to[1] - from[1]) * e]);
+      if (k >= 1) clearInterval(wiv);
+    }, 500);
+  }
 
   function start(opts) {
     if (started) return; started = true;
@@ -405,7 +422,7 @@ window.AlmaWall = (function () {
     var bg = document.getElementById('bg');
     wall = document.createElement('div'); wall.id = 'almaWall'; wall.setAttribute('aria-hidden', 'true');
     bg.parentNode.insertBefore(wall, bg.nextSibling);
-    load(); build(); shift();
+    load(); build(); shift(true);
     queue = list.slice().reverse(); // най-новите първо
     setTimeout(fromSite, 4000);   // по-късно – началото (буквите, обложката) да мине гладко
     setTimeout(seed, 7000);
@@ -425,10 +442,21 @@ window.AlmaWall = (function () {
    – надписите, малки, се разхождат по целия екран (на 25 сек – към ново случайно място, без спиране);
    – фонът е меко сияние, което на 15 сек минава към следващия цвят от чертичките и на 30 сек се мести.
    Щом дойде песен с обложка – всичко се връща в нормалния вид. Общ за телевизора и скрийнсейвъра.
+   Пести компютъра: движенията са на стъпки (надписите 10, сиянието 4 кадъра/сек), не CSS преходи с 60 кадъра/сек.
    Изисква #main, #float, #art, #shade. */
 window.AlmaRoam = (function () {
   'use strict';
   var started = false;
+  function ease(k) { return k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; }
+  // Плавно (с омекотяване) от a до b за ms – на стъпки през step ms; връща функция за спиране.
+  function tween(a, b, ms, step, apply) {
+    var t0 = Date.now(), iv = setInterval(function () {
+      var k = Math.min(1, (Date.now() - t0) / ms), e = ease(k);
+      apply(a.map(function (v, i) { return v + (b[i] - v) * e; }));
+      if (k >= 1) clearInterval(iv);
+    }, step);
+    return function () { clearInterval(iv); };
+  }
   function start() {
     if (started) return; started = true;
     var $ = function (id) { return document.getElementById(id); };
@@ -438,15 +466,17 @@ window.AlmaRoam = (function () {
     layers.forEach(function (l) { g.appendChild(l); });
     var shade = $('shade'); shade.parentNode.insertBefore(g, shade.nextSibling);
     function isLogo() { return art.classList.contains('logo'); }
+    var pos = [0, 0], stopMove = null;
+    function setPos(p) { pos = p; m.style.transform = 'translate3d(' + p[0].toFixed(1) + 'px,' + p[1].toFixed(1) + 'px,0)'; }
     function go(now) {
       if (!root.classList.contains('roam')) return;
       var W = innerWidth, H = innerHeight, w = m.offsetWidth, h = m.offsetHeight;
       var top = H * 0.17; // под часовника
       var x = W * 0.03 + Math.random() * Math.max(0, W - w - W * 0.06);
       var y = top + Math.random() * Math.max(0, H - h - top - H * 0.05);
-      if (now) m.style.transition = 'none';
-      m.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)'; m.classList.add('placed');
-      if (now) { void m.offsetWidth; m.style.transition = ''; }
+      if (stopMove) stopMove();
+      if (now === true) { setPos([x, y]); m.classList.add('placed'); return; }
+      stopMove = tween(pos, [x, y], 25000, 100, setPos); // 25 сек до новото място, 10 стъпки/сек
     }
     function set(on, instant) {
       if (!first && on === root.classList.contains('roam')) return;
@@ -455,7 +485,7 @@ window.AlmaRoam = (function () {
         root.classList.toggle('roam', on);
         clearInterval(timer);
         if (on) { go(true); setTimeout(go, 60); timer = setInterval(go, 25000); }
-        else { m.style.transition = ''; m.style.transform = ''; m.classList.remove('placed'); }
+        else { if (stopMove) stopMove(); m.style.transform = ''; m.classList.remove('placed'); }
       };
       if (instant || parseFloat(getComputedStyle(fl).opacity) < 0.5) { apply(); return; } // начало или вече скрито (смяна на страната)
       fl.style.transition = 'opacity .7s ease'; fl.style.opacity = '0';
@@ -464,18 +494,51 @@ window.AlmaRoam = (function () {
     new MutationObserver(function () { set(isLogo()); }).observe(art, { attributes: true, attributeFilter: ['class'] });
     set(isLogo(), true);
     var COLORS = ['#FF8A1F', '#19C2A8', '#F0479A', '#F7B500', '#4C8DFF'], ci = Math.floor(Math.random() * 5);
-    function glowMove() {
-      var W = innerWidth, H = innerHeight, d = Math.max(W, H) * 0.8;
-      g.style.transform = 'translate(' + Math.round(-d * 0.3 + Math.random() * (W - d * 0.4)) + 'px,' + Math.round(-d * 0.3 + Math.random() * (H - d * 0.4)) + 'px)';
-    }
+    var gpos = [0, 0], stopGlow = null;
+    function glowAt(p) { gpos = p; g.style.transform = 'translate3d(' + Math.round(p[0]) + 'px,' + Math.round(p[1]) + 'px,0)'; }
+    function glowTarget() { var W = innerWidth, H = innerHeight, d = Math.max(W, H) * 0.8;
+      return [-d * 0.3 + Math.random() * (W - d * 0.4), -d * 0.3 + Math.random() * (H - d * 0.4)]; }
+    function glowMove() { if (stopGlow) stopGlow(); stopGlow = tween(gpos, glowTarget(), 30000, 250, glowAt); } // 4 стъпки/сек
     function paint(l, c) { l.style.background = 'radial-gradient(circle closest-side, ' + c + ' 0%, transparent 100%)'; }
     // Нов цвят: рисува се веднъж на скрития слой, после двата слоя си разменят видимостта (само избледняване).
-    function glowColor() { ci = (ci + 1) % COLORS.length; var nx = layers[1 - li]; paint(nx, COLORS[ci]); nx.classList.add('on'); layers[li].classList.remove('on'); li = 1 - li; }
-    paint(layers[0], COLORS[ci]); layers[0].style.transition = 'none'; layers[0].classList.add('on'); void g.offsetWidth; layers[0].style.transition = '';
-    g.style.transition = 'none'; glowMove(); void g.offsetWidth; g.style.transition = '';
+    function glowColor() {
+      ci = (ci + 1) % COLORS.length; var nx = layers[1 - li], old = layers[li]; paint(nx, COLORS[ci]); li = 1 - li;
+      tween([0], [1], 10000, 250, function (v) { nx.style.opacity = v[0].toFixed(3); old.style.opacity = (1 - v[0]).toFixed(3); });
+    }
+    paint(layers[0], COLORS[ci]); layers[0].style.opacity = '1'; layers[1].style.opacity = '0';
+    glowAt(glowTarget());
     setInterval(function () { if (root.classList.contains('roam')) glowColor(); }, 15000);
     setInterval(function () { if (root.classList.contains('roam')) glowMove(); }, 30000);
     addEventListener('resize', function () { go(true); });
+  }
+  return { start: start };
+})();
+</script>
+<!-- v40 (01.11.2026): по-леко – бавните движения на стъпки (2–10 пъти/сек) вместо 60 кадъра/сек (alma-calm.js). -->
+<script>
+/* AlmaCalm – пести компютъра (Радио Alma Mater). Бавното обикаляне на обложката и надписите (половин обиколка за 120 сек)
+   вече не е CSS анимация с 60 кадъра/сек, а 10 малки стъпки в секунда (под половин точка на стъпка – гладко),
+   а видеокартата почива между стъпките (без постоянно прерисуване, без шум от вентилатори).
+   Когато няма песен (html.roam), движението го прави alma-roam.js. Изисква #float, #main и --rx/--ry (fitFloat). */
+window.AlmaCalm = (function () {
+  'use strict';
+  var started = false;
+  function start() {
+    if (started) return; started = true;
+    var root = document.documentElement, fl = document.getElementById('float'), m = document.getElementById('main');
+    root.classList.add('calm');
+    var t0 = Date.now(), wasRoam = null;
+    function px(name, fb) { var v = parseFloat(getComputedStyle(root).getPropertyValue(name)); return isNaN(v) ? fb : v; }
+    function tick() {
+      var roam = root.classList.contains('roam');
+      if (roam) { if (wasRoam === false) fl.style.transform = ''; wasRoam = true; return; }
+      wasRoam = false;
+      var rx = px('--rx', innerWidth * 0.05), ry = px('--ry', innerHeight * 0.08);
+      var ph = (Date.now() - t0) / 120000 * Math.PI; // както преди: 120 сек от единия до другия край; Y е изместен с четвърт
+      fl.style.transform = 'translate3d(' + (-rx * Math.cos(ph)).toFixed(2) + 'px,0,0)';
+      m.style.transform = 'translate3d(0,' + (-ry * Math.cos(ph + Math.PI / 2)).toFixed(2) + 'px,0)';
+    }
+    tick(); setInterval(tick, 100); // 10 малки стъпки в секунда – без видимо подскачане (при 2/сек голямата обложка подскачаше)
   }
   return { start: start };
 })();
@@ -1055,7 +1118,7 @@ window.AlmaRoam = (function () {
       diagLog.push(t + ' ' + name);
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
-    diag('v39');
+    diag('v40');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
@@ -1159,6 +1222,7 @@ window.AlmaRoam = (function () {
   }
   show(null, null, false); // начален фон – размитото лого
   try { AlmaWall.start(); } catch (e) {} // v35: стената от обложки
+  try { AlmaCalm.start(); } catch (e) {} // v40: по-леко за телевизора
   try { AlmaRoam.start(); } catch (e) {} // v36: без песен – без логото
   // Песента и обложката – чак когато звукът тръгне: заявката за песента е към същия сървър
   // като звука и го задържаше (звукът тръгваше точно 8 сек след като я прекъснехме).
