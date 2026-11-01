@@ -201,26 +201,28 @@
     color:#F1E4FF !important; opacity:.95; }
   html.mosaic #clock::before { content:""; position:absolute; inset:-1.4vmin -2.2vmin; border-radius:1.6vmin; z-index:-1;
     background:rgba(14,6,26,.66); }
-  /* „Нашата“ плочка – знакът на радиото в мозайката (без лого): петте чертички, еквалайзерът, името.
-     Еквалайзерът е неподвижен (без постоянна анимация – пести компютъра/телевизора). */
+  /* „Нашата“ плочка – знакът на радиото (без лого): отгоре еквалайзерът (подскача, докато свири), „Радио“,
+     „Alma Mater“ (Unbounded 400 – шрифтът на заглавията на сайта; вградени са само буквите „Alma Mater“, 2,9 KB),
+     „София – 88 MHz“, най-долу петте чертички. Никога в най-горния и най-долния ред. (Решено 01.11.2026.) */
+  @font-face { font-family:AlmaBrand; font-weight:200 900; src:url(data:font/woff2;base64,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) format('woff2'); }
   #almaBrand { position:absolute; border-radius:.5vmin; overflow:hidden; opacity:0; transition:opacity .9s ease;
-    background:linear-gradient(150deg, #3B1D68 0%, #241040 55%, #1A0F2E 100%); box-sizing:border-box; padding:.95em .85em .9em;
-    display:flex; flex-direction:column; justify-content:space-between; font-family:Manrope, system-ui, sans-serif; color:#fff; }
+    background:linear-gradient(150deg, #3B1D68 0%, #241040 55%, #1A0F2E 100%); box-sizing:border-box; padding:.9em .85em .8em;
+    display:flex; flex-direction:column; font-family:Manrope, system-ui, sans-serif; color:#fff; }
   #almaBrand.on { opacity:1; }
-  #almaBrand .d { display:flex; gap:5%; }
-  #almaBrand .d i { flex:1; height:.32em; border-radius:.2em; }
-  #almaBrand .d i:nth-child(1), #almaBrand .q i:nth-child(1) { background:#FF8A1F; }
-  #almaBrand .d i:nth-child(2), #almaBrand .q i:nth-child(2) { background:#19C2A8; }
-  #almaBrand .d i:nth-child(3), #almaBrand .q i:nth-child(3) { background:#F0479A; }
-  #almaBrand .d i:nth-child(4), #almaBrand .q i:nth-child(4) { background:#F7B500; }
-  #almaBrand .d i:nth-child(5) { background:#4C8DFF; }
-  #almaBrand .q { display:flex; align-items:flex-end; gap:.22em; height:1.25em; }
-  #almaBrand .q i { display:block; width:.36em; border-radius:.14em; }
-  #almaBrand .q i:nth-child(1) { height:55%; } #almaBrand .q i:nth-child(2) { height:100%; }
-  #almaBrand .q i:nth-child(3) { height:40%; } #almaBrand .q i:nth-child(4) { height:75%; }
-  #almaBrand .n1 { font-size:.8em; font-weight:700; color:#C7A4EB; letter-spacing:.02em; }
-  #almaBrand .n2 { font-family:AlmaHead, Manrope, sans-serif; font-weight:500; font-size:1.45em; line-height:1.02; letter-spacing:-.03em; color:#EFE6F8; }
-  #almaBrand .f { font-size:.72em; font-weight:600; color:#B9A7CE; margin-top:.25em; }
+  #almaBrand .q { display:flex; align-items:flex-end; gap:.2em; height:1.05em; }
+  #almaBrand .q i { display:block; width:.3em; height:100%; border-radius:.12em; transform-origin:50% 100%; transition:transform .14s linear; }
+  #almaBrand .q i:nth-child(1) { background:#FF8A1F; transform:scaleY(.55); }
+  #almaBrand .q i:nth-child(2) { background:#19C2A8; transform:scaleY(1); }
+  #almaBrand .q i:nth-child(3) { background:#F0479A; transform:scaleY(.4); }
+  #almaBrand .q i:nth-child(4) { background:#F7B500; transform:scaleY(.75); }
+  #almaBrand .n1 { font-size:.58em; font-weight:600; color:#C7A4EB; letter-spacing:.04em; margin-top:.9em; }
+  #almaBrand .n2 { font-family:AlmaBrand, Manrope, sans-serif; font-weight:400; font-size:.92em; line-height:1.12; letter-spacing:-.02em; color:#F3EAFB; margin-top:.15em; white-space:nowrap; }
+  #almaBrand .f { font-size:.52em; font-weight:500; color:#B9A7CE; margin:.45em 0 .7em; }
+  #almaBrand .d { display:flex; gap:5%; margin-top:auto; }
+  #almaBrand .d i { flex:1; height:.24em; border-radius:.12em; }
+  #almaBrand .d i:nth-child(1) { background:#FF8A1F; } #almaBrand .d i:nth-child(2) { background:#19C2A8; } #almaBrand .d i:nth-child(3) { background:#F0479A; }
+  #almaBrand .d i:nth-child(4) { background:#F7B500; } #almaBrand .d i:nth-child(5) { background:#4C8DFF; }
+  /* /AlmaMosaic */
 </style>
 <script>document.documentElement.classList.add('roam'); /* v36: от първия кадър – без голямото лого */</script>
 </head>
@@ -600,6 +602,7 @@ window.AlmaCalm = (function () {
   return { start: start };
 })();
 </script>
+<!-- v44 (01.11.2026): „нашата“ плочка по макет Б (Unbounded 400, „София – 88 MHz“, чертичките долу, еквалайзерът подскача). -->
 <!-- v43 (01.11.2026): „нашата“ плочка в мозайката – знакът на радиото. -->
 <!-- v42 (01.11.2026): мозайка от обложки (alma-mosaic.js, обща със скрийнсейвъра). -->
 <script>
@@ -608,7 +611,8 @@ window.AlmaCalm = (function () {
    – На ~3 сек една случайна плочка се обръща (3D) и показва друга обложка – никога същата до себе си.
    – Текущата песен е голяма плочка 2×2 с надпис (песен, изпълнител); при нова песен и на 5 мин се мести.
    – Без песен (говор): на голямата плочка е само надписът (предаването).
-   – Една „наша“ плочка 1×1 – знакът на радиото (петте чертички, еквалайзерът, името); сменя мястото си на 4 мин.
+   – Една „наша“ плочка 1×1 – знакът на радиото (еквалайзерът – подскача, докато свири; „Радио Alma Mater“;
+     „София – 88 MHz“; петте чертички най-долу); никога в най-горния и най-долния ред; сменя мястото си на 4 мин.
    Обложките: covers.json на сайта (до 300, последните 7 дни) + запомнените (alma-wall) + текущата.
    СИГУРНОСТ: адресите се проверяват с AlmaWall.clean (само Apple mzstatic.com и almaone.github.io/cast/covers/),
    показват се само в <img>; надписите – само като текст (textContent). Тегли се умерено: само видимите плочки,
@@ -637,8 +641,9 @@ window.AlmaMosaic = (function () {
     var brand = document.createElement('div'); brand.id = 'almaBrand';
     function bars(cls, n) { var d = document.createElement('div'); d.className = cls; for (var i = 0; i < n; i++) d.appendChild(document.createElement('i')); return d; }
     function txt(cls, t) { var d = document.createElement('div'); d.className = cls; d.textContent = t; return d; }
-    var mid = document.createElement('div'); mid.appendChild(bars('q', 4)); mid.appendChild(txt('n1', 'Радио')); mid.appendChild(txt('n2', 'Alma Mater'));
-    brand.appendChild(bars('d', 5)); brand.appendChild(mid); brand.appendChild(txt('f', '88 MHz · София'));
+    var eq = bars('q', 4);
+    brand.appendChild(eq); brand.appendChild(txt('n1', 'Радио')); brand.appendChild(txt('n2', 'Alma Mater'));
+    brand.appendChild(txt('f', 'София – 88 MHz')); brand.appendChild(bars('d', 5));
     var brandCell = null;
 
     var pool = [], cells = [], cols = 0, rows = 5, size = 0, gap = 0, bigAt = null, curArt = null;
@@ -698,7 +703,8 @@ window.AlmaMosaic = (function () {
     }
     function placeBrand(instant) {
       if (!cols) return;
-      var ok = cells.filter(function (x) { return !x.under && !(x.r === 0 && x.c >= cols - 2) && x !== brandCell; });
+      // никога в най-горния и най-долния ред (решено 01.11.2026) и в крайните колони
+      var ok = cells.filter(function (x) { return !x.under && x.r > 0 && x.r < rows - 1 && x.c > 0 && x.c < cols - 1 && x !== brandCell; }); // и не в крайните колони (там плочките са отрязани от ръба)
       if (!ok.length) return;
       var x = ok[Math.floor(Math.random() * ok.length)];
       var apply = function () {
@@ -764,6 +770,14 @@ window.AlmaMosaic = (function () {
     }, 3000);
     setInterval(function () { placeBig(false); }, 5 * 60000);
     setInterval(function () { placeBrand(false); }, 4 * 60000);
+    // Еквалайзерът подскача, докато свири (#main без .mute и .paused) – 7 стъпки/сек, не постоянна анимация.
+    var EQ_REST = [.55, 1, .4, .75], eqOn = null, mainEl = $('main');
+    setInterval(function () {
+      var playing = !!mainEl && !mainEl.classList.contains('mute') && !mainEl.classList.contains('paused');
+      if (!playing && eqOn === false) return;
+      eqOn = playing;
+      [].forEach.call(eq.children, function (b, i) { b.style.transform = 'scaleY(' + (playing ? (.25 + Math.random() * .75).toFixed(2) : EQ_REST[i]) + ')'; });
+    }, 140);
     setInterval(function () { fromSite(); }, 30 * 60000); // нови обложки от ефира
     var rt = null; addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { build(); fill(); }, 400); });
   }
@@ -1348,7 +1362,7 @@ window.AlmaMosaic = (function () {
       diagLog.push(t + ' ' + name);
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
-    diag('v43');
+    diag('v44');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
