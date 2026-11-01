@@ -160,6 +160,8 @@
   html.roam .live { font-size:1.9vmin; }
   html.roam .dashes { margin-bottom:1.3vmin; } html.roam .dashes i { width:3vmin; height:.5vmin; }
   html.roam .station { margin-top:2.6vmin; font-size:1.9vmin; } html.roam .station img { width:3.6vmin; height:3.6vmin; }
+  /* v39 (01.11.2026): надписите на телевизора – 75% от предишния размер (обложката и часовникът – без промяна). */
+  .info { zoom:.75; }
 </style>
 <script>document.documentElement.classList.add('roam'); /* v36: от първия кадър – без голямото лого */</script>
 </head>
@@ -413,6 +415,7 @@ window.AlmaWall = (function () {
   return { start: start, clean: clean };
 })();
 </script>
+<!-- v39 (01.11.2026): надписите – 75%. -->
 <!-- v38 (31.10.2026): без превъртане на буквите (табло) – само плавно избледняване. -->
 <!-- v37 (31.10.2026): гладко на телевизора – буквите на един таймер, сиянието само избледнява, стената тръгва по-късно. -->
 <!-- v36 (31.10.2026): без песен – без голямото лого, надписите се разхождат, цветно сияние (alma-roam.js); първата обложка – отляво. -->
@@ -1052,7 +1055,7 @@ window.AlmaRoam = (function () {
       diagLog.push(t + ' ' + name);
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
-    diag('v38');
+    diag('v39');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
