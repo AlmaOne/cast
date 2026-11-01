@@ -201,6 +201,26 @@
     color:#F1E4FF !important; opacity:.95; }
   html.mosaic #clock::before { content:""; position:absolute; inset:-1.4vmin -2.2vmin; border-radius:1.6vmin; z-index:-1;
     background:rgba(14,6,26,.66); }
+  /* „Нашата“ плочка – знакът на радиото в мозайката (без лого): петте чертички, еквалайзерът, името.
+     Еквалайзерът е неподвижен (без постоянна анимация – пести компютъра/телевизора). */
+  #almaBrand { position:absolute; border-radius:.5vmin; overflow:hidden; opacity:0; transition:opacity .9s ease;
+    background:linear-gradient(150deg, #3B1D68 0%, #241040 55%, #1A0F2E 100%); box-sizing:border-box; padding:.95em .85em .9em;
+    display:flex; flex-direction:column; justify-content:space-between; font-family:Manrope, system-ui, sans-serif; color:#fff; }
+  #almaBrand.on { opacity:1; }
+  #almaBrand .d { display:flex; gap:5%; }
+  #almaBrand .d i { flex:1; height:.32em; border-radius:.2em; }
+  #almaBrand .d i:nth-child(1), #almaBrand .q i:nth-child(1) { background:#FF8A1F; }
+  #almaBrand .d i:nth-child(2), #almaBrand .q i:nth-child(2) { background:#19C2A8; }
+  #almaBrand .d i:nth-child(3), #almaBrand .q i:nth-child(3) { background:#F0479A; }
+  #almaBrand .d i:nth-child(4), #almaBrand .q i:nth-child(4) { background:#F7B500; }
+  #almaBrand .d i:nth-child(5) { background:#4C8DFF; }
+  #almaBrand .q { display:flex; align-items:flex-end; gap:.22em; height:1.25em; }
+  #almaBrand .q i { display:block; width:.36em; border-radius:.14em; }
+  #almaBrand .q i:nth-child(1) { height:55%; } #almaBrand .q i:nth-child(2) { height:100%; }
+  #almaBrand .q i:nth-child(3) { height:40%; } #almaBrand .q i:nth-child(4) { height:75%; }
+  #almaBrand .n1 { font-size:.8em; font-weight:700; color:#C7A4EB; letter-spacing:.02em; }
+  #almaBrand .n2 { font-family:AlmaHead, Manrope, sans-serif; font-weight:500; font-size:1.45em; line-height:1.02; letter-spacing:-.03em; color:#EFE6F8; }
+  #almaBrand .f { font-size:.72em; font-weight:600; color:#B9A7CE; margin-top:.25em; }
 </style>
 <script>document.documentElement.classList.add('roam'); /* v36: от първия кадър – без голямото лого */</script>
 </head>
@@ -580,13 +600,15 @@ window.AlmaCalm = (function () {
   return { start: start };
 })();
 </script>
+<!-- v43 (01.11.2026): „нашата“ плочка в мозайката – знакът на радиото. -->
 <!-- v42 (01.11.2026): мозайка от обложки (alma-mosaic.js, обща със скрийнсейвъра). -->
 <script>
 /* AlmaMosaic – мозайка от обложки (Радио Alma Mater), по идеята на стария скрийнсейвър „Album Artwork“ на iTunes.
    – Целият екран е обложки от край до край (5 реда); фугите показват размитата обложка на текущата песен (#bg).
    – На ~3 сек една случайна плочка се обръща (3D) и показва друга обложка – никога същата до себе си.
-   – Текущата песен е голяма плочка 2×2 с надпис („СЕГА“, песен, изпълнител); при нова песен и на 5 мин се мести.
+   – Текущата песен е голяма плочка 2×2 с надпис (песен, изпълнител); при нова песен и на 5 мин се мести.
    – Без песен (говор): на голямата плочка е само надписът (предаването).
+   – Една „наша“ плочка 1×1 – знакът на радиото (петте чертички, еквалайзерът, името); сменя мястото си на 4 мин.
    Обложките: covers.json на сайта (до 300, последните 7 дни) + запомнените (alma-wall) + текущата.
    СИГУРНОСТ: адресите се проверяват с AlmaWall.clean (само Apple mzstatic.com и almaone.github.io/cast/covers/),
    показват се само в <img>; надписите – само като текст (textContent). Тегли се умерено: само видимите плочки,
@@ -610,7 +632,14 @@ window.AlmaMosaic = (function () {
     live.appendChild(document.createTextNode('СЕГА'));
     var tEl = document.createElement('div'); tEl.className = 't';
     var aEl = document.createElement('div'); aEl.className = 'a';
-    cap.appendChild(live); cap.appendChild(tEl); cap.appendChild(aEl); big.appendChild(cap);
+    cap.appendChild(tEl); cap.appendChild(aEl); big.appendChild(cap); // без „СЕГА“ (решено 01.11) – само песен и изпълнител
+    // „Нашата“ плочка – без лого: чертичките, еквалайзерът, името (само текст и цветни елементи).
+    var brand = document.createElement('div'); brand.id = 'almaBrand';
+    function bars(cls, n) { var d = document.createElement('div'); d.className = cls; for (var i = 0; i < n; i++) d.appendChild(document.createElement('i')); return d; }
+    function txt(cls, t) { var d = document.createElement('div'); d.className = cls; d.textContent = t; return d; }
+    var mid = document.createElement('div'); mid.appendChild(bars('q', 4)); mid.appendChild(txt('n1', 'Радио')); mid.appendChild(txt('n2', 'Alma Mater'));
+    brand.appendChild(bars('d', 5)); brand.appendChild(mid); brand.appendChild(txt('f', '88 MHz · София'));
+    var brandCell = null;
 
     var pool = [], cells = [], cols = 0, rows = 5, size = 0, gap = 0, bigAt = null, curArt = null;
     function add(u) { u = clean(u); if (u && pool.indexOf(u) < 0) pool.push(u); }
@@ -628,10 +657,12 @@ window.AlmaMosaic = (function () {
         var im = document.createElement('img'); im.alt = ''; im.decoding = 'async'; im.referrerPolicy = 'no-referrer'; el.appendChild(im);
         box.appendChild(el); cells.push({ el: el, img: im, r: r, c: c, url: null, under: false });
       }
-      box.appendChild(big);
+      box.appendChild(big); box.appendChild(brand);
+      brand.style.width = brand.style.height = (size - gap) + 'px'; brand.style.fontSize = Math.round(size * 0.115) + 'px';
+      brandCell = null;
       big.style.width = big.style.height = (2 * size - gap) + 'px';
       big.dataset.ox = offX; big.dataset.oy = offY;
-      placeBig(true);
+      placeBig(true); placeBrand(true);
     }
     function at(r, c) { return (r < 0 || c < 0 || r >= rows || c >= cols) ? null : cells[r * cols + c]; }
     function neighbours(x) {
@@ -665,17 +696,32 @@ window.AlmaMosaic = (function () {
       fillQ = cells.filter(function (x) { return !x.url; }).sort(function () { return Math.random() - 0.5; });
       (function next() { var x = fillQ.shift(); if (!x) return; if (!x.url) setCell(x, pick(x), false); setTimeout(next, 140); })();
     }
+    function placeBrand(instant) {
+      if (!cols) return;
+      var ok = cells.filter(function (x) { return !x.under && !(x.r === 0 && x.c >= cols - 2) && x !== brandCell; });
+      if (!ok.length) return;
+      var x = ok[Math.floor(Math.random() * ok.length)];
+      var apply = function () {
+        if (brandCell) { brandCell.brand = false; brandCell.el.classList.remove('hide'); }
+        brandCell = x; x.brand = true; x.el.classList.add('hide');
+        brand.style.left = x.el.style.left; brand.style.top = x.el.style.top;
+        brand.classList.add('on');
+      };
+      if (instant || !brand.classList.contains('on')) { apply(); return; }
+      brand.classList.remove('on'); setTimeout(apply, 900);
+    }
     // Голямата плочка 2×2 – ново случайно място (клетките под нея се скриват).
     function placeBig(instant) {
       if (!cols) return;
       var r = Math.floor(Math.random() * (rows - 1)), c = Math.floor(Math.random() * (cols - 1));
       if (bigAt && bigAt[0] === r && bigAt[1] === c) c = (c + 2) % (cols - 1);
       var apply = function () {
-        cells.forEach(function (x) { x.under = false; x.el.classList.remove('hide'); });
+        cells.forEach(function (x) { x.under = false; if (!x.brand) x.el.classList.remove('hide'); });
         bigAt = [r, c];
         [[r, c], [r, c + 1], [r + 1, c], [r + 1, c + 1]].forEach(function (p) { var x = at(p[0], p[1]); if (x) { x.under = true; x.el.classList.add('hide'); } });
         big.style.left = (+big.dataset.ox + c * size + gap / 2) + 'px'; big.style.top = (+big.dataset.oy + r * size + gap / 2) + 'px';
         big.classList.add('on');
+        if (brandCell && brandCell.under) placeBrand(true); // застъпи знака – знакът отива другаде
       };
       if (instant || !big.classList.contains('on')) { apply(); return; }
       big.classList.remove('on'); setTimeout(apply, 850);
@@ -713,10 +759,11 @@ window.AlmaMosaic = (function () {
     setTimeout(fill, 2500); // ако сайтът бави – пълним с каквото има
     // На ~3 сек – една плочка се обръща; на 5 мин голямата плочка сменя мястото си.
     setInterval(function () {
-      var free = cells.filter(function (x) { return !x.under && x.url; }); if (!free.length || pool.length < 2) return;
+      var free = cells.filter(function (x) { return !x.under && !x.brand && x.url; }); if (!free.length || pool.length < 2) return;
       var x = free[Math.floor(Math.random() * free.length)]; setCell(x, pick(x), true);
     }, 3000);
     setInterval(function () { placeBig(false); }, 5 * 60000);
+    setInterval(function () { placeBrand(false); }, 4 * 60000);
     setInterval(function () { fromSite(); }, 30 * 60000); // нови обложки от ефира
     var rt = null; addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { build(); fill(); }, 400); });
   }
@@ -1301,7 +1348,7 @@ window.AlmaMosaic = (function () {
       diagLog.push(t + ' ' + name);
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
-    diag('v42');
+    diag('v43');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
