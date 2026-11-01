@@ -166,6 +166,41 @@
   /* v40: обложката на телевизора – 75% от предишния размер (като надписите от v39). */
   #art { width:min(43.5vh,30vw); height:min(43.5vh,30vw); }
   @media (max-aspect-ratio: 4/3) { #art { width:27vh; height:27vh; } }
+  /* v42 (01.11.2026) */
+  /* AlmaMosaic (alma-mosaic.js): целият екран – обложки от край до край; една се обръща на ~3 сек;
+     текущата песен – голяма плочка 2×2 с надпис; фугите показват размитата обложка на текущата песен (#bg). */
+  html.mosaic #float { display:none !important; }   /* голямата обложка и надписите – вместо тях плочката 2×2 */
+  html.mosaic #almaWall { display:none !important; }
+  html.mosaic #shade { opacity:.55; }                /* фугите – по-светли, да се вижда цветът на песента */
+  #almaMosaic { position:fixed; inset:0; pointer-events:none; perspective:1600px; }
+  #almaMosaic .m { position:absolute; border-radius:.5vmin; overflow:hidden; opacity:0; background:#2A1650;
+    transition:opacity .9s ease, transform .35s ease-in; backface-visibility:hidden; }
+  #almaMosaic .m.on { opacity:1; }
+  #almaMosaic .m.flip { transform:rotateY(90deg); }
+  #almaMosaic .m.hide { opacity:0 !important; }
+  #almaMosaic .m img { display:block; width:100%; height:100%; object-fit:cover; }
+  /* Голямата плочка – текущата песен */
+  #almaNow { position:absolute; border-radius:.9vmin; overflow:hidden; opacity:0; background:#2A1650;
+    box-shadow:0 1.6vmin 4vmin rgba(0,0,0,.55); transition:opacity .8s ease; }
+  #almaNow.on { opacity:1; }
+  #almaNow img { display:block; width:100%; height:100%; object-fit:cover; }
+  #almaNow .cap { position:absolute; left:0; right:0; bottom:0; padding:5% 6% 5.5%; zoom:var(--ts, 1);
+    background:linear-gradient(to top, rgba(14,6,26,.92) 0%, rgba(14,6,26,.75) 60%, rgba(14,6,26,0) 100%);
+    font-family:Manrope, system-ui, sans-serif; color:#fff; }
+  #almaNow .live { display:flex; align-items:center; gap:.8vmin; font-size:1.5vmin; font-weight:800; letter-spacing:.14em; color:#C7A4EB; }
+  #almaNow .live i { width:.9vmin; height:.9vmin; border-radius:50%; background:#FF6B4A; }
+  #almaNow .t { font-size:2.6vmin; font-weight:800; line-height:1.15; margin-top:.6vmin;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #almaNow .a { font-size:1.9vmin; font-weight:600; color:#D9CCF0; margin-top:.3vmin; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* Без песен (говор) – само надписът, на голямата плочка без картинка */
+  #almaNow.talk { background:rgba(26,15,46,.82); }
+  #almaNow.talk img { display:none; }
+  #almaNow.talk .cap { top:0; display:flex; flex-direction:column; justify-content:center; background:none; }
+  /* Часовникът върху мозайката – светли цифри върху лека тъмна подложка (да се четат върху обложките). */
+  html.mosaic #clock { isolation:isolate; background:none !important; -webkit-background-clip:border-box !important; background-clip:border-box !important;
+    color:#F1E4FF !important; opacity:.95; }
+  html.mosaic #clock::before { content:""; position:absolute; inset:-1.4vmin -2.2vmin; border-radius:1.6vmin; z-index:-1;
+    background:rgba(14,6,26,.66); }
 </style>
 <script>document.documentElement.classList.add('roam'); /* v36: от първия кадър – без голямото лого */</script>
 </head>
@@ -514,6 +549,7 @@ window.AlmaRoam = (function () {
   return { start: start };
 })();
 </script>
+<!-- v41 (01.11.2026): сигурност – адресите на обложките от iTunes се проверяват строго. -->
 <!-- v40 (01.11.2026): по-леко – бавните движения на стъпки (2–10 пъти/сек) вместо 60 кадъра/сек (alma-calm.js). -->
 <script>
 /* AlmaCalm – пести компютъра (Радио Alma Mater). Бавното обикаляне на обложката и надписите (половин обиколка за 120 сек)
@@ -530,6 +566,7 @@ window.AlmaCalm = (function () {
     var t0 = Date.now(), wasRoam = null;
     function px(name, fb) { var v = parseFloat(getComputedStyle(root).getPropertyValue(name)); return isNaN(v) ? fb : v; }
     function tick() {
+      if (root.classList.contains('mosaic')) return; // мозайка – голямата обложка я няма
       var roam = root.classList.contains('roam');
       if (roam) { if (wasRoam === false) fl.style.transform = ''; wasRoam = true; return; }
       wasRoam = false;
@@ -539,6 +576,149 @@ window.AlmaCalm = (function () {
       m.style.transform = 'translate3d(0,' + (-ry * Math.cos(ph + Math.PI / 2)).toFixed(2) + 'px,0)';
     }
     tick(); setInterval(tick, 100); // 10 малки стъпки в секунда – без видимо подскачане (при 2/сек голямата обложка подскачаше)
+  }
+  return { start: start };
+})();
+</script>
+<!-- v42 (01.11.2026): мозайка от обложки (alma-mosaic.js, обща със скрийнсейвъра). -->
+<script>
+/* AlmaMosaic – мозайка от обложки (Радио Alma Mater), по идеята на стария скрийнсейвър „Album Artwork“ на iTunes.
+   – Целият екран е обложки от край до край (5 реда); фугите показват размитата обложка на текущата песен (#bg).
+   – На ~3 сек една случайна плочка се обръща (3D) и показва друга обложка – никога същата до себе си.
+   – Текущата песен е голяма плочка 2×2 с надпис („СЕГА“, песен, изпълнител); при нова песен и на 5 мин се мести.
+   – Без песен (говор): на голямата плочка е само надписът (предаването).
+   Обложките: covers.json на сайта (до 300, последните 7 дни) + запомнените (alma-wall) + текущата.
+   СИГУРНОСТ: адресите се проверяват с AlmaWall.clean (само Apple mzstatic.com и almaone.github.io/cast/covers/),
+   показват се само в <img>; надписите – само като текст (textContent). Тегли се умерено: само видимите плочки,
+   една по една, 300 px; после от кеша.
+   Изисква #bg, #shade, #art, #title, #artist и AlmaWall (за проверката на адресите). */
+window.AlmaMosaic = (function () {
+  'use strict';
+  var COVERS = 'https://radioalmamater.bg/wp-content/uploads/alma/covers.json';
+  var started = false;
+  function start() {
+    if (started) return; started = true;
+    var $ = function (id) { return document.getElementById(id); };
+    var root = document.documentElement; root.classList.add('mosaic');
+    var clean = (window.AlmaWall && AlmaWall.clean) || function () { return null; };
+    var box = document.createElement('div'); box.id = 'almaMosaic'; box.setAttribute('aria-hidden', 'true');
+    var shade = $('shade'); shade.parentNode.insertBefore(box, shade.nextSibling);
+    var big = document.createElement('div'); big.id = 'almaNow';
+    var bimg = document.createElement('img'); bimg.alt = ''; bimg.referrerPolicy = 'no-referrer'; big.appendChild(bimg);
+    var cap = document.createElement('div'); cap.className = 'cap';
+    var live = document.createElement('div'); live.className = 'live'; live.appendChild(document.createElement('i'));
+    live.appendChild(document.createTextNode('СЕГА'));
+    var tEl = document.createElement('div'); tEl.className = 't';
+    var aEl = document.createElement('div'); aEl.className = 'a';
+    cap.appendChild(live); cap.appendChild(tEl); cap.appendChild(aEl); big.appendChild(cap);
+
+    var pool = [], cells = [], cols = 0, rows = 5, size = 0, gap = 0, bigAt = null, curArt = null;
+    function add(u) { u = clean(u); if (u && pool.indexOf(u) < 0) pool.push(u); }
+    try { (JSON.parse(localStorage.getItem('alma-wall') || '[]') || []).slice().reverse().forEach(add); } catch (e) {}
+
+    function build() {
+      var W = innerWidth, H = innerHeight;
+      rows = H > W ? 8 : 5; size = Math.ceil(H / rows); cols = Math.ceil(W / size); gap = Math.max(2, Math.round(size * 0.035));
+      var offX = Math.round((W - cols * size) / 2), offY = Math.round((H - rows * size) / 2);
+      box.textContent = ''; cells = [];
+      for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
+        var el = document.createElement('div'); el.className = 'm';
+        el.style.left = (offX + c * size + gap / 2) + 'px'; el.style.top = (offY + r * size + gap / 2) + 'px';
+        el.style.width = el.style.height = (size - gap) + 'px';
+        var im = document.createElement('img'); im.alt = ''; im.decoding = 'async'; im.referrerPolicy = 'no-referrer'; el.appendChild(im);
+        box.appendChild(el); cells.push({ el: el, img: im, r: r, c: c, url: null, under: false });
+      }
+      box.appendChild(big);
+      big.style.width = big.style.height = (2 * size - gap) + 'px';
+      big.dataset.ox = offX; big.dataset.oy = offY;
+      placeBig(true);
+    }
+    function at(r, c) { return (r < 0 || c < 0 || r >= rows || c >= cols) ? null : cells[r * cols + c]; }
+    function neighbours(x) {
+      var out = []; for (var dr = -1; dr <= 1; dr++) for (var dc = -1; dc <= 1; dc++) { if (dr || dc) { var n = at(x.r + dr, x.c + dc); if (n) out.push(n); } }
+      return out;
+    }
+    // Обложка за клетка: не е до себе си и (ако може) не е на екрана изобщо.
+    function pick(x) {
+      if (!pool.length) return null;
+      var near = neighbours(x).map(function (n) { return n.url; }), shownNow = cells.map(function (n) { return n.url; });
+      for (var k = 0; k < 12; k++) {
+        var u = pool[Math.floor(Math.random() * pool.length)];
+        if (u === x.url || near.indexOf(u) >= 0) continue;
+        if (k < 8 && shownNow.indexOf(u) >= 0 && pool.length > cells.length) continue;
+        return u;
+      }
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+    function setCell(x, u, animate) {
+      if (!u) return;
+      var pre = new Image(); pre.referrerPolicy = 'no-referrer';
+      pre.onload = function () {
+        var go = function () { x.img.src = u; x.url = u; x.el.classList.add('on'); x.el.classList.remove('flip'); };
+        if (animate && x.url) { x.el.classList.add('flip'); setTimeout(go, 360); } else go();
+      };
+      pre.src = u;
+    }
+    // Пълнене отначало – една по една (умерено към Apple).
+    var fillQ = [];
+    function fill() {
+      fillQ = cells.filter(function (x) { return !x.url; }).sort(function () { return Math.random() - 0.5; });
+      (function next() { var x = fillQ.shift(); if (!x) return; if (!x.url) setCell(x, pick(x), false); setTimeout(next, 140); })();
+    }
+    // Голямата плочка 2×2 – ново случайно място (клетките под нея се скриват).
+    function placeBig(instant) {
+      if (!cols) return;
+      var r = Math.floor(Math.random() * (rows - 1)), c = Math.floor(Math.random() * (cols - 1));
+      if (bigAt && bigAt[0] === r && bigAt[1] === c) c = (c + 2) % (cols - 1);
+      var apply = function () {
+        cells.forEach(function (x) { x.under = false; x.el.classList.remove('hide'); });
+        bigAt = [r, c];
+        [[r, c], [r, c + 1], [r + 1, c], [r + 1, c + 1]].forEach(function (p) { var x = at(p[0], p[1]); if (x) { x.under = true; x.el.classList.add('hide'); } });
+        big.style.left = (+big.dataset.ox + c * size + gap / 2) + 'px'; big.style.top = (+big.dataset.oy + r * size + gap / 2) + 'px';
+        big.classList.add('on');
+      };
+      if (instant || !big.classList.contains('on')) { apply(); return; }
+      big.classList.remove('on'); setTimeout(apply, 850);
+    }
+    // Текущата песен – от голямата обложка и надписите на страницата (show() ги сменя).
+    function sync() {
+      var art = $('art'), logo = art.classList.contains('logo');
+      tEl.textContent = $('title').textContent || ''; aEl.textContent = $('artist').textContent || '';
+      var u = logo ? null : (art.getAttribute('src') || '');
+      var ok = u && (/^https:\/\/[a-z0-9-]{1,40}\.mzstatic\.com\/[A-Za-z0-9\/._%+-]{1,500}$/i.test(u) || /^https:\/\/almaone\.github\.io\/cast\/covers\/[A-Za-z0-9._-]{1,120}\.(?:jpe?g|png)$/i.test(u));
+      big.classList.toggle('talk', !ok);
+      if (ok && u !== curArt) {
+        curArt = u;
+        var small = u.replace(/\/\d{2,4}x\d{2,4}bb\.(jpg|jpeg|png|webp)$/i, '/600x600bb.$1'), pre = new Image(); pre.referrerPolicy = 'no-referrer';
+        pre.onload = function () { placeBig(false); setTimeout(function () { bimg.src = small; }, big.classList.contains('on') ? 860 : 0); };
+        pre.src = small; add(u);
+      } else if (!ok && curArt !== null) { curArt = null; placeBig(false); }
+    }
+    var moT = null;
+    var mo = new MutationObserver(function () { clearTimeout(moT); moT = setTimeout(sync, 300); });
+    mo.observe($('art'), { attributes: true, attributeFilter: ['src', 'class'] });
+    mo.observe($('title'), { childList: true, characterData: true, subtree: true });
+    mo.observe($('artist'), { childList: true, characterData: true, subtree: true });
+
+    // Обложките от сайта – ограничен размер, само JSON, само проверени адреси.
+    function fromSite() {
+      var ctrl = new AbortController(), tm = setTimeout(function () { ctrl.abort(); }, 10000);
+      fetch(COVERS, { signal: ctrl.signal, credentials: 'omit', referrerPolicy: 'no-referrer' })
+        .then(function (r) { if (!r.ok) throw 0; return r.text(); })
+        .then(function (t) { if (t.length > 300000) return; var j = JSON.parse(t); if (j && Array.isArray(j.covers)) j.covers.slice(0, 400).forEach(add); })
+        .catch(function () {})
+        .finally(function () { clearTimeout(tm); fill(); });
+    }
+    build(); sync(); fromSite();
+    setTimeout(fill, 2500); // ако сайтът бави – пълним с каквото има
+    // На ~3 сек – една плочка се обръща; на 5 мин голямата плочка сменя мястото си.
+    setInterval(function () {
+      var free = cells.filter(function (x) { return !x.under && x.url; }); if (!free.length || pool.length < 2) return;
+      var x = free[Math.floor(Math.random() * free.length)]; setCell(x, pick(x), true);
+    }, 3000);
+    setInterval(function () { placeBig(false); }, 5 * 60000);
+    setInterval(function () { fromSite(); }, 30 * 60000); // нови обложки от ефира
+    var rt = null; addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { build(); fill(); }, 400); });
   }
   return { start: start };
 })();
@@ -807,7 +987,8 @@ window.AlmaCalm = (function () {
   // Липсва, счупен е или бави – всичко е както без него (iTunes). Ред в covers.json печели: адрес или null (логото).
   var covers = {}, coversNextAt = 0, coversBusy = false;
   var OUR_COVER = /^https:\/\/almaone\.github\.io\/cast\/covers\/[A-Za-z0-9._-]+\.(?:jpe?g|png)$/i;
-  var APPLE_COVER = /^https:\/\/[a-z0-9-]+\.mzstatic\.com\/\S+$/i;
+  // v41: строго – само букви, цифри и / . _ % + - (без кавички, скоби, интервали).
+  var APPLE_COVER = /^https:\/\/[a-z0-9-]{1,40}\.mzstatic\.com\/[A-Za-z0-9\/._%+-]{1,500}$/i;
   function validCover(u) { return typeof u === 'string' && (APPLE_COVER.test(u) || OUR_COVER.test(u)); }
   function coverKey(a, t) { return (a + '|' + t).toLowerCase().replace(/\s+/g, ' ').trim(); }
   function parseCovers(text) {
@@ -884,7 +1065,8 @@ window.AlmaCalm = (function () {
           if (rank > bestRank || (rank === bestRank && id < bestId)) { best = r; bestRank = rank; bestScore = sc; }
         });
         // Голяма обложка за телевизора.
-        var big = best ? best.artworkUrl100.replace('100x100bb', '1000x1000bb') : null;
+        var big = best ? String(best.artworkUrl100).replace('100x100bb', '1000x1000bb') : null;
+        if (big && !APPLE_COVER.test(big)) big = null; // v41: адрес от iTunes – само проверен
         if (bestScore === 2) return big;
         if (big && !fallback) fallback = big;
         return attempt(i + 1);
@@ -901,6 +1083,7 @@ window.AlmaCalm = (function () {
   var lastKey = null, showSeq = 0;
   // pending: обложката още се търси – фонът остава стария (без мигане между песните).
   function show(song, art, pending) {
+    if (art && !(APPLE_COVER.test(art) || OUR_COVER.test(art))) art = null; // v41: последна проверка
     var seq = ++showSeq;
     $('title').textContent = song ? song.title : STATION;
     $('title').classList.toggle('brand', !song); // името на радиото – с шрифта на сайта
@@ -1118,7 +1301,7 @@ window.AlmaCalm = (function () {
       diagLog.push(t + ' ' + name);
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
-    diag('v40');
+    diag('v42');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
@@ -1224,6 +1407,7 @@ window.AlmaCalm = (function () {
   try { AlmaWall.start(); } catch (e) {} // v35: стената от обложки
   try { AlmaCalm.start(); } catch (e) {} // v40: по-леко за телевизора
   try { AlmaRoam.start(); } catch (e) {} // v36: без песен – без логото
+  try { if (!window.SS || SS.mosaic !== false) AlmaMosaic.start(); } catch (e) {} // v42: мозайка (в скрийнсейвъра – според менюто)
   // Песента и обложката – чак когато звукът тръгне: заявката за песента е към същия сървър
   // като звука и го задържаше (звукът тръгваше точно 8 сек след като я прекъснехме).
   // Резервно – след 30 сек, ако по някаква причина не свири.
