@@ -197,6 +197,8 @@
   #almaNow .d i { flex:1; height:.42vmin; border-radius:.3vmin; }
   #almaNow .d i:nth-child(1) { background:#FF8A1F; } #almaNow .d i:nth-child(2) { background:#19C2A8; } #almaNow .d i:nth-child(3) { background:#F0479A; }
   #almaNow .d i:nth-child(4) { background:#F7B500; } #almaNow .d i:nth-child(5) { background:#4C8DFF; }
+  /* „Alma Mater“ в надписите на голямата плочка – с шрифта на марката (Unbounded 400), като на „нашата“ плочка. */
+  #almaNow .am { font-family:AlmaBrand, Manrope, sans-serif; font-weight:400; letter-spacing:-.02em; }
   /* Без песен (говор) – само надписът, на голямата плочка без картинка */
   #almaNow.talk { background:rgba(26,15,46,.82); }
   #almaNow.talk img { display:none; }
@@ -211,7 +213,7 @@
      „София – 88 MHz“, най-долу петте чертички. Никога в най-горния и най-долния ред. (Решено 01.11.2026.) */
   @font-face { font-family:AlmaBrand; font-weight:200 900; src:url(data:font/woff2;base64,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) format('woff2'); }
   #almaBrand { position:absolute; border-radius:.5vmin; overflow:hidden; opacity:0; transition:opacity .9s ease;
-    background:linear-gradient(150deg, #3B1D68 0%, #241040 55%, #1A0F2E 100%); box-sizing:border-box; padding:.9em .85em .8em;
+    background:linear-gradient(180deg, #0C2D4D 0%, #0B4A73 35%, #2E78A2 60%, #1C557E 100%); box-sizing:border-box; padding:.9em .85em .8em;
     display:flex; flex-direction:column; font-family:Manrope, system-ui, sans-serif; color:#fff; }
   #almaBrand.on { opacity:1; }
   #almaBrand .q { display:flex; align-items:flex-end; gap:.2em; height:1.05em; }
@@ -608,6 +610,8 @@ window.AlmaCalm = (function () {
 })();
 </script>
 <!-- v45 (01.11.2026): под песента – петте чертички. -->
+<!-- v47 (01.11.2026): фон на малката плочка – океанско синьо, по-тъмно долу (вариант 7). -->
+<!-- v46 (01.11.2026): „Alma Mater“ на голямата плочка – с шрифта на марката. -->
 <!-- v44 (01.11.2026): „нашата“ плочка по макет Б (Unbounded 400, „София – 88 MHz“, чертичките долу, еквалайзерът подскача). -->
 <!-- v43 (01.11.2026): „нашата“ плочка в мозайката – знакът на радиото. -->
 <!-- v42 (01.11.2026): мозайка от обложки (alma-mosaic.js, обща със скрийнсейвъра). -->
@@ -741,10 +745,20 @@ window.AlmaMosaic = (function () {
       if (instant || !big.classList.contains('on')) { apply(); return; }
       big.classList.remove('on'); setTimeout(apply, 850);
     }
+    // „Alma Mater“ в надписите на голямата плочка (напр. при говор: „Радио Alma Mater“) – с шрифта на марката
+    // (Unbounded 400, като на „нашата“ плочка). Само текстови възли – без HTML от външни данни.
+    function brandText(el, t) {
+      el.textContent = '';
+      var i = t.indexOf('Alma Mater');
+      if (i < 0) { el.textContent = t; return; }
+      if (i > 0) el.appendChild(document.createTextNode(t.slice(0, i)));
+      var sp = document.createElement('span'); sp.className = 'am'; sp.textContent = 'Alma Mater'; el.appendChild(sp);
+      if (i + 10 < t.length) el.appendChild(document.createTextNode(t.slice(i + 10)));
+    }
     // Текущата песен – от голямата обложка и надписите на страницата (show() ги сменя).
     function sync() {
       var art = $('art'), logo = art.classList.contains('logo');
-      tEl.textContent = $('title').textContent || ''; aEl.textContent = $('artist').textContent || '';
+      brandText(tEl, $('title').textContent || ''); brandText(aEl, $('artist').textContent || '');
       var u = logo ? null : (art.getAttribute('src') || '');
       var ok = u && (/^https:\/\/[a-z0-9-]{1,40}\.mzstatic\.com\/[A-Za-z0-9\/._%+-]{1,500}$/i.test(u) || /^https:\/\/almaone\.github\.io\/cast\/covers\/[A-Za-z0-9._-]{1,120}\.(?:jpe?g|png)$/i.test(u));
       big.classList.toggle('talk', !ok);
@@ -1371,7 +1385,7 @@ window.AlmaMosaic = (function () {
       diagLog.push(t + ' ' + name);
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
-    diag('v45');
+    diag('v47');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
