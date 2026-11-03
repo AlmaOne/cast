@@ -376,7 +376,7 @@ window.AlmaWall = (function () {
   function clean(u) {
     if (typeof u !== 'string' || u.length > 600) return null;
     if (APPLE.test(u)) return u.replace(/\/\d{2,4}x\d{2,4}bb\.(jpg|jpeg|png|webp)$/i, '/300x300bb.$1'); // малки – за стената
-    if (OURS.test(u)) return u;
+    if (OURS.test(u) && !/\/covers\/predavane-/i.test(u)) return u; // v48: обложките на предавания (predavane-…) не влизат в стената/мозайката – само в голямата плочка
     return null;
   }
   var list = [], cells = [], wall = null, size = 0, cols = 0, rows = 0, queue = [], started = false, enabled = true;
@@ -610,6 +610,7 @@ window.AlmaCalm = (function () {
 })();
 </script>
 <!-- v45 (01.11.2026): под песента – петте чертички. -->
+<!-- v48 (03.11.2026): обложките на предавания (covers/predavane-…) не влизат в стената и мозайката от обложки (само песни); на голямата плочка/екрана се показват. -->
 <!-- v47 (01.11.2026): фон на малката плочка – океанско синьо, по-тъмно долу (вариант 7). -->
 <!-- v46 (01.11.2026): „Alma Mater“ на голямата плочка – с шрифта на марката. -->
 <!-- v44 (01.11.2026): „нашата“ плочка по макет Б (Unbounded 400, „София – 88 MHz“, чертичките долу, еквалайзерът подскача). -->
@@ -1385,7 +1386,7 @@ window.AlmaMosaic = (function () {
       diagLog.push(t + ' ' + name);
       $('status').textContent = '⏱ ' + diagLog.slice(-9).join(' · ');
     }
-    diag('v47');
+    diag('v48');
     context.addEventListener(cast.framework.system.EventType.READY, function () { diag('готов'); });
     try { (function () {
       var a = $('player');
