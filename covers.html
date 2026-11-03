@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<meta name="alma-version" content="v8"><!-- при промяна: +1 тук и долу („Обложки · версия …“) -->
+<meta name="alma-version" content="v10"><!-- при промяна: +1 тук и долу („Обложки · версия …“) -->
 <title>Обложки – поправки</title>
 <!-- Alma Plus: страница за поддръжка на списъка с поправки на обложките (covers.json).
      Само генерира файла (и своите картинки) – нищо не записва сама. Приложението, телевизорът и колата четат covers.json: ред тук печели пред iTunes; без файла – само iTunes. -->
@@ -89,6 +89,9 @@
   .miss .x { background:transparent; border:1px solid var(--line); color:var(--muted); padding:3px 8px; font-size:12px; font-weight:500; border-radius:8px; }
   .tag.now { background:rgba(239,68,68,.18); color:#fca5a5; }
   .row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+  .show-ck { display:flex; align-items:center; gap:6px; white-space:nowrap; cursor:pointer; color:var(--hl); font-weight:600; }
+  .row .show-ck { flex:none; }
+  .row .show-ck input[type=checkbox] { flex:none; width:18px; min-width:0; height:18px; padding:0; border:0; accent-color:var(--hl); margin:0; }
   input { flex:1; min-width:140px; background:#1f0f2f; border:1px solid var(--line); color:#fff; border-radius:9px; padding:9px 11px; font:inherit; }
   button { background:var(--acc); color:#fff; border:0; border-radius:9px; padding:9px 14px; font:inherit; font-weight:600; cursor:pointer; }
   button.sec { background:transparent; border:1px solid var(--line); color:var(--muted); font-weight:500; }
@@ -158,7 +161,7 @@
       <div class="notes" id="nSongs"><div>Страницата следи радиото на всеки 10 сек и пази песните, докато е отворена (до 30). До всяка е обложката, която приложението и телевизорът намират сами (същото търсене): <b style="color:#4ade80">авто</b> – има, <b style="color:#f87171">няма</b> – ще излезе логото, <b style="color:#fbbf24">в списъка</b> – от поправките.</div></div>
       <div id="songs"><div class="msg">Чакам песен от радиото…</div></div>
       <div class="ck" id="ck"><i></i><span id="ckText">последна проверка: –</span></div>
-      <div class="ver">Обложки · версия v8</div>
+      <div class="ver">Обложки · версия v10</div>
     </div>
 
     <div class="box">
@@ -167,6 +170,7 @@
       <div class="row">
         <input id="artist" placeholder="Изпълнител">
         <input id="title" placeholder="Песен (празно = за всичко от изпълнителя)">
+        <label class="show-ck" title="Своята картинка се казва predavane-… и се показва само в плейъра – не в списъците с песни"><input type="checkbox" id="isShow"> Предаване</label>
         <button onclick="search()">Търси</button>
       </div>
       <div class="msg" id="msg">Избери песен отляво или напиши изпълнител и песен.</div>
@@ -499,7 +503,7 @@
       d.innerHTML = th + '<div class="tx"><div class="t">' + esc(s.title) + '</div><div class="a">' + esc(s.artist || '—') + '</div></div>' +
         (i === 0 && k === lastKey ? '<span class="tag now">сега</span>' : '') + tag + '<span class="w">' + s.at + '</span>';
       d.onclick = function(){ document.querySelectorAll('.song').forEach(function(e){ e.classList.remove('sel'); }); d.classList.add('sel');
-        $('artist').value = s.artist; $('title').value = s.title; search(); };
+        $('artist').value = s.artist; $('title').value = s.title; $('isShow').checked = /\/covers\/predavane-/.test(String(LIST[fixKey(s.artist, s.title)] || '')); search(); };
       c.appendChild(d);
     });
   }
@@ -748,7 +752,8 @@
     c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
     c.fillStyle = '#000'; c.fillRect(0, 0, N, N);
     c.drawImage(own.img, own.ox * f, own.oy * f, own.img.width * sc * f, own.img.height * sc * f); }
-  function ownNames(){ var b = slug($('artist').value.trim(), $('title').value.trim()); $('ownNames').textContent = b + '-1000.jpg и ' + b + '-500.jpg'; return b; }
+  // Отметка „Предаване“ → картинката е „predavane-…“ – показва се само в плейъра, не в списъците (3.11.2026).
+  function ownNames(){ var t0 = $('title').value.trim(), b = ($('isShow').checked ? 'predavane-' : '') + slug($('artist').value.trim(), t0); $('ownNames').textContent = b + '-1000.jpg и ' + b + '-500.jpg'; return b; }
   function ownRender(){ if (!own.img) return; ownClamp(); ownDraw($('ownCv'), P); ownNames(); }
   function ownZoomTo(z){ var sc0 = ownBase() * own.zoom, cx = (P / 2 - own.ox) / sc0, cy = (P / 2 - own.oy) / sc0;
     own.zoom = Math.max(1, Math.min(4, z)); var sc1 = ownBase() * own.zoom; own.ox = P / 2 - cx * sc1; own.oy = P / 2 - cy * sc1;
@@ -771,6 +776,7 @@
   $('ownZoom').oninput = function(){ ownZoomTo(Number(this.value)); };
   $('artist').addEventListener('input', function(){ if (own.img) ownNames(); });
   $('title').addEventListener('input', function(){ if (own.img) ownNames(); });
+  $('isShow').addEventListener('change', function(){ if (own.img) ownNames(); });
   (function(){ var cv = $('ownCv'), drag = null;
     cv.addEventListener('pointerdown', function(e){ if (!own.img) return; drag = { x: e.clientX, y: e.clientY, ox: own.ox, oy: own.oy }; cv.setPointerCapture(e.pointerId); });
     cv.addEventListener('pointermove', function(e){ if (!drag) return; var k = P / cv.getBoundingClientRect().width;
@@ -820,7 +826,7 @@
     var i = k.indexOf('|'), a = k.slice(0, i), t = k.slice(i + 1);
     // ако песента е в списъка отляво – с истинските главни/малки букви
     songs.some(function(s){ if (key(s.artist, s.title) === k) { a = s.artist; t = s.title; return true; } });
-    editing = k; $('artist').value = a; $('title').value = t; renderList();
+    editing = k; $('artist').value = a; $('title').value = t; $('isShow').checked = /\/covers\/predavane-/.test(String(LIST[k] || '')); renderList();
     $('artist').scrollIntoView({ behavior: 'smooth', block: 'center' });
     toast('Избери новата обложка за „' + k + '“ – „Добави“ я заменя');
     window.search();
