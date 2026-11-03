@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<meta name="alma-version" content="v5"><!-- при промяна: +1 тук и долу („Инструменти · версия …“) -->
+<meta name="alma-version" content="v6"><!-- при промяна: +1 тук и долу („Инструменти · версия …“) -->
 <title>Инструменти – Alma Plus</title>
 <!-- Alma Plus: инструменти за наблюдение (поток, слушатели, песни, заглавия). Работи, докато страницата е отворена;
      данните се пазят в този браузър (localStorage): песните – 30 дни (старите дни свити, без адресите на обложките), слушателите по минути – 8 дни. Нищо не записва другаде. -->
@@ -146,7 +146,7 @@
     <div class="scroll"><table><thead><tr><th>час</th><th></th><th>изпълнител – песен</th><th>слушатели</th><th>обложка</th></tr></thead><tbody id="log"></tbody></table></div>
     <div class="note">Слушатели: в началото → в края на песента (зелено – повече, червено – по-малко). Пазят се 30 дни в този браузър (по-старите от вчера – без картинките, етикетите остават).</div>
   </div>
-  <div class="ver">Инструменти · версия v5</div>
+  <div class="ver">Инструменти · версия v6</div>
 </div>
 
 <script>
@@ -156,6 +156,9 @@
   var $ = function(id){ return document.getElementById(id); };
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
   function key(a, t){ return (a + '|' + t).toLowerCase().replace(/\s+/g, ' ').trim(); }
+  // Кой ред от поправките важи: точният „изпълнител|песен“ или само изпълнителя „изпълнител|“ (3.11.2026).
+  function fixKey(a, t){ if (typeof LIST === 'undefined') return null; var k = key(a, t); if (LIST.hasOwnProperty(k)) return k;
+    var ka = key(a, ''); return String(a || '').trim() && LIST.hasOwnProperty(ka) ? ka : null; }
   function p2(n){ return ('0' + n).slice(-2); }
   function hm(t){ var d = new Date(t); return p2(d.getHours()) + ':' + p2(d.getMinutes()); }
   function dayKey(t){ var d = new Date(t || Date.now()); return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); }
@@ -419,8 +422,8 @@
     cur = s; curSince = now;
     if (s.title) {
       var e = { at: now, seen: now, a: s.artist, t: s.title, raw: s.raw, ls: lastLis, art: 'wait' };
-      var k = key(s.artist, s.title);
-      if (LIST.hasOwnProperty(k)) e.art = LIST[k] ? 'fix:' + LIST[k] : 'fix:';
+      var k = fixKey(s.artist, s.title);
+      if (k) e.art = LIST[k] ? 'fix:' + LIST[k] : 'fix:';
       log.push(e); save('alma-log-' + day, log);
       if (e.art === 'wait') resolveArt(day, e.at, s);
       checkQuality(s, false);
@@ -512,7 +515,7 @@
     }
     // Без обложка: има ли в iTunes същата песен с много близък изпълнител?
     if (!s.artist || !s.title) return; // без изпълнител – вече е „Липсва изпълнител“
-    var key0 = key(s.artist, s.title); if (typeof LIST !== 'undefined' && LIST.hasOwnProperty(key0)) return; // вече е в поправките
+    if (fixKey(s.artist, s.title)) return; // вече е в поправките
     fetchText('https://itunes.apple.com/search?term=' + encodeURIComponent(fixMixed(s.title)) + '&media=music&entity=song&limit=25&country=bg').then(function(txt){
       var res = []; try { res = JSON.parse(txt).results || []; } catch (e) { return; }
       var na = norm(s.artist), best = null, bd = 99;
@@ -533,7 +536,7 @@
   // Всичко в списъка без поправените („Няма обложка“/„Грешно име“, които вече са в covers.json, излизат сами).
   function qAll(){
     var Q = qload(QKEY), changed = false;
-    if (typeof LIST !== 'undefined') Object.keys(Q).forEach(function(k){ var q = Q[k], t = qType(q); if (QTYPES[t] && QTYPES[t].cover && LIST.hasOwnProperty(key(q.a, q.t))) { delete Q[k]; changed = true; } });
+    if (typeof LIST !== 'undefined') Object.keys(Q).forEach(function(k){ var q = Q[k], t = qType(q); if (QTYPES[t] && QTYPES[t].cover && fixKey(q.a, q.t)) { delete Q[k]; changed = true; } });
     if (changed) qsave(QKEY, Q);
     return Q;
   }

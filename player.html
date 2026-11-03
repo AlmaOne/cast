@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<meta name="alma-version" content="v3"><!-- при промяна: +1 тук -->
+<meta name="alma-version" content="v4"><!-- при промяна: +1 тук -->
 <title>Слушай – Радио Alma Mater</title>
 <!-- Alma Plus: малък плейър (отваря се от „▶ Слушай“ в covers/tools/play). Пуска потока, показва песента и обложката
      (същото търсене като на телевизора, с covers.json) и казва на другите страници дали свири (BroadcastChannel „alma-player“). -->
@@ -236,7 +236,12 @@
       if (changed) coversChanged();
     }).catch(function () { coversNextAt = Date.now() + 600000; }).finally(function () { coversBusy = false; });
   }
-  function coverFix(a, t) { var k = coverKey(a, t); return Object.prototype.hasOwnProperty.call(covers, k) ? covers[k] : undefined; }
+  // Точният ред „изпълнител|песен“, после само изпълнителя „изпълнител|“ (за всичко с него – напр. предаване; 3.11.2026).
+  function coverFix(a, t) {
+    var has = function (k) { return Object.prototype.hasOwnProperty.call(covers, k); }, k = coverKey(a, t), ka = coverKey(a, '');
+    if (has(k)) return covers[k];
+    return String(a || '').trim() && has(ka) ? covers[ka] : undefined;
+  }
   // Телевизорът взима голямата: 1000×1000 от Apple, „…-1000.jpg“ от нашите.
   function tvSize(u) { return APPLE_COVER.test(u) ? u.replace(/\d+x\d+bb/, '1000x1000bb') : u; }
   var artCache = {};
