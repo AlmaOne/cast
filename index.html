@@ -193,13 +193,16 @@
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   #almaNow .a { font-size:1.9vmin; font-weight:600; color:#D9CCF0; margin-top:.3vmin; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   /* Под песента – петте чертички (марката); без еквалайзер (решено 01.11.2026). */
-  #almaNow .d { display:flex; gap:4%; margin-top:1.3vmin; }
-  #almaNow .d i { flex:1; height:.42vmin; border-radius:.3vmin; }
+  #almaNow .d { display:flex; gap:var(--dg, 4%); margin-top:1.3vmin; }
+  /* v51 (09.11.2026): чертичките – същата дебелина като на малката плочка (мери се от нея в alma-mosaic); дължината – както преди. */
+  #almaNow .d i { flex:0 0 var(--dw, auto); flex-grow:var(--dgrow, 1); height:var(--dh, .42vmin); border-radius:var(--dr, .3vmin); }
   #almaNow .d i:nth-child(1) { background:#FF8A1F; } #almaNow .d i:nth-child(2) { background:#19C2A8; } #almaNow .d i:nth-child(3) { background:#F0479A; }
   #almaNow .d i:nth-child(4) { background:#F7B500; } #almaNow .d i:nth-child(5) { background:#4C8DFF; }
   /* „Alma Mater“ в надписите на голямата плочка – с шрифта на марката (Unbounded 400), като на „нашата“ плочка. */
   #almaNow .am { font-family:AlmaBrand, Manrope, sans-serif; font-weight:400; letter-spacing:-.02em; }
   /* Без песен (говор) – само надписът, на голямата плочка без картинка */
+  /* v50: обложката на предаването – името е изписано на нея, затова без надпис отдолу (иначе се застъпват). */
+  #almaNow.show .cap { display:none; }
   #almaNow.talk { background:rgba(26,15,46,.82); }
   #almaNow.talk img { display:none; }
   #almaNow.talk .cap { top:0; display:flex; flex-direction:column; justify-content:center; background:none; }
@@ -610,6 +613,8 @@ window.AlmaCalm = (function () {
 })();
 </script>
 <!-- v45 (01.11.2026): под песента – петте чертички. -->
+<!-- v51 (09.11.2026): чертичките под песента на голямата плочка – същата дебелина като на малката плочка (дължината – както преди). -->
+<!-- v50 (09.11.2026): обложката на предаването при говор – от програмата на сайта (/wp-json/alma/v1/now → show.art_big), като в приложението; „almamater“ / „Радио Alma Mater“ / името на предаването = говор. Проба в браузър: …/cast/?site=test. -->
 <!-- v49 (03.11.2026): covers.json – ред само с изпълнителя („изпълнител|“) важи за всичко с този изпълнител (за предаванията). -->
 <!-- v48 (03.11.2026): обложките на предавания (covers/predavane-…) не влизат в стената и мозайката от обложки (само песни); на голямата плочка/екрана се показват. -->
 <!-- v47 (01.11.2026): фон на малката плочка – океанско синьо, по-тъмно долу (вариант 7). -->
@@ -681,6 +686,18 @@ window.AlmaMosaic = (function () {
       big.style.width = big.style.height = (2 * size - gap) + 'px';
       big.dataset.ox = offX; big.dataset.oy = offY;
       placeBig(true); placeBrand(true);
+      requestAnimationFrame(sameDashes);
+    }
+    // v51: чертичките на голямата плочка – като на малката („нашата“): същата дължина, дебелина и разстояние.
+    function sameDashes() {
+      var bi = brand.querySelectorAll('.d i'), d = big.querySelector('.d');
+      if (bi.length < 2 || !d) return;
+      var a = bi[0].getBoundingClientRect(), b = bi[1].getBoundingClientRect();
+      if (!a.width || !a.height) { setTimeout(sameDashes, 1000); return; }
+      var z = parseFloat(getComputedStyle(cap).zoom) || 1; // надписът е с „zoom“ – мерките се делят на него
+      // 09.11: дължината и разстоянието остават както преди (по цялата ширина) – изравнява се само дебелината.
+      d.style.setProperty('--dh', (a.height / z).toFixed(2) + 'px');
+      d.style.setProperty('--dr', (a.height / z / 2).toFixed(2) + 'px');
     }
     function at(r, c) { return (r < 0 || c < 0 || r >= rows || c >= cols) ? null : cells[r * cols + c]; }
     function neighbours(x) {
@@ -762,8 +779,10 @@ window.AlmaMosaic = (function () {
       var art = $('art'), logo = art.classList.contains('logo');
       brandText(tEl, $('title').textContent || ''); brandText(aEl, $('artist').textContent || '');
       var u = logo ? null : (art.getAttribute('src') || '');
-      var ok = u && (/^https:\/\/[a-z0-9-]{1,40}\.mzstatic\.com\/[A-Za-z0-9\/._%+-]{1,500}$/i.test(u) || /^https:\/\/almaone\.github\.io\/cast\/covers\/[A-Za-z0-9._-]{1,120}\.(?:jpe?g|png)$/i.test(u));
+      var ok = u && (/^https:\/\/[a-z0-9-]{1,40}\.mzstatic\.com\/[A-Za-z0-9\/._%+-]{1,500}$/i.test(u) || /^https:\/\/almaone\.github\.io\/cast\/covers\/[A-Za-z0-9._-]{1,120}\.(?:jpe?g|png)$/i.test(u)
+        || /^https:\/\/(?:test\.)?radioalmamater\.bg\/wp-content\/uploads\/[A-Za-z0-9\/._-]{1,200}\.(?:jpe?g|png|webp)$/i.test(u)); // v50: обложката на предаването от сайта
       big.classList.toggle('talk', !ok);
+      big.classList.toggle('show', !!ok && (/^https:\/\/(?:test\.)?radioalmamater\.bg\/wp-content\/uploads\//i.test(u) || /\/cast\/covers\/predavane-/i.test(u))); // v50: предаване – без надпис
       if (ok && u !== curArt) {
         curArt = u;
         var small = u.replace(/\/\d{2,4}x\d{2,4}bb\.(jpg|jpeg|png|webp)$/i, '/600x600bb.$1'), pre = new Image(); pre.referrerPolicy = 'no-referrer';
@@ -1106,6 +1125,51 @@ window.AlmaMosaic = (function () {
     return String(a || '').trim() && has(ka) ? covers[ka] : undefined;
   }
   // Телевизорът взима голямата: 1000×1000 от Apple, „…-1000.jpg“ от нашите.
+  // ---- v50 (09.11.2026): обложката на предаването при говор – от програмата на сайта (/now → show.art_big) ----
+  // Говор = няма песен, „almamater“ / „Радио Alma Mater“ или името на предаването. Не зависи от Icecast.
+  // Сайтът: radioalmamater.bg; за проба в браузър – …/cast/?site=test (test.radioalmamater.bg).
+  // СИГУРНОСТ: само GET без бисквитки, ≤ 64 KB, само JSON; картинка – само https://<сайта>/wp-content/uploads/…(.jpg/.png/.webp);
+  // името и водещите – само като текст. При грешка – последното известно предаване до 15 мин, после логото.
+  var SITE_HOST = /[?&]site=test\b/.test(location.search || '') ? 'test.radioalmamater.bg' : 'radioalmamater.bg';
+  var SITE_NOW = 'https://' + SITE_HOST + '/wp-json/alma/v1/now';
+  var SITE_ART = new RegExp('^https://' + SITE_HOST.replace(/\./g, '\\.') + '/wp-content/uploads/[A-Za-z0-9/._-]{1,200}\\.(?:jpe?g|png|webp)$', 'i');
+  var siteShow = null, siteShowAt = 0, siteShowOkAt = 0, siteShowFailAt = 0, siteShowBusy = null;
+  function cleanText(x, max) {
+    if (typeof x !== 'string') return '';
+    x = x.replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, ' ').replace(/\s+/g, ' ').trim();
+    return Array.from(x).slice(0, max).join('');
+  }
+  function siteArt(u) { return typeof u === 'string' && u.length <= 400 && u.indexOf('..') < 0 && SITE_ART.test(u) ? u : ''; }
+  function getSiteShow() {
+    var now = Date.now();
+    if (siteShowAt && now - siteShowAt < 60000) return Promise.resolve(siteShow);
+    if (siteShowFailAt && now - siteShowFailAt < 30000) return Promise.resolve(now - siteShowOkAt < 15 * 60000 ? siteShow : null);
+    if (siteShowBusy) return siteShowBusy;
+    var ctrl = new AbortController(), timer = setTimeout(function () { ctrl.abort(); }, 12000);
+    siteShowBusy = fetch(SITE_NOW + '?_=' + now, { signal: ctrl.signal, credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer' })
+      .then(function (r) { if (!r.ok) throw 0; return r.text(); })
+      .then(function (t) {
+        if (t.length > 64000 || !/^\s*\{/.test(t)) throw 0;
+        var j = JSON.parse(t), sh = j && j.show && typeof j.show === 'object' ? j.show : null, out = null;
+        if (sh) {
+          var title = cleanText(sh.title, 120), art = siteArt(sh.art_big) || siteArt(sh.art);
+          if (title && art) out = { title: title, hosts: cleanText(sh.hosts, 160), art: art };
+        }
+        siteShow = out; siteShowAt = Date.now(); siteShowOkAt = siteShowAt; siteShowFailAt = 0;
+        return out;
+      })
+      .catch(function () { siteShowAt = 0; siteShowFailAt = Date.now(); return Date.now() - siteShowOkAt < 15 * 60000 ? siteShow : null; })
+      .finally(function () { clearTimeout(timer); siteShowBusy = null; });
+    return siteShowBusy;
+  }
+  function normName(x) { return String(x || '').toLowerCase().replace(/[„“"«»]/g, '').replace(/\s+/g, ' ').trim(); }
+  function isStationTitle(s) { return !!s && !String(s.artist || '').trim() && /alma\s*mater|алма\s*матер/i.test(s.title || ''); }
+  function isShowName(s, sh) {
+    if (!s || !sh) return false;
+    var a = normName(s.artist), n = normName(sh.title);
+    return (!a && normName(s.title) === n) || a === n;
+  }
+
   function tvSize(u) { return APPLE_COVER.test(u) ? u.replace(/\d+x\d+bb/, '1000x1000bb') : u; }
   var artCache = {};
   // Опити: американският магазин → българският → на латиница → само заглавието → само изпълнителя.
@@ -1174,7 +1238,7 @@ window.AlmaMosaic = (function () {
   var lastKey = null, showSeq = 0;
   // pending: обложката още се търси – фонът остава стария (без мигане между песните).
   function show(song, art, pending) {
-    if (art && !(APPLE_COVER.test(art) || OUR_COVER.test(art))) art = null; // v41: последна проверка
+    if (art && !(APPLE_COVER.test(art) || OUR_COVER.test(art) || SITE_ART.test(art))) art = null; // v41: последна проверка (v50: + обложката на предаването от сайта)
     var seq = ++showSeq;
     $('title').textContent = song ? song.title : STATION;
     $('title').classList.toggle('brand', !song); // името на радиото – с шрифта на сайта
@@ -1216,7 +1280,13 @@ window.AlmaMosaic = (function () {
       var raw = fixEncoding(decodeXml((track.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '')).trim();
       var song = raw ? splitTitle(raw) : null;
       if (song && !song.title) song = null;
-      var key = song ? (song.artist + '|' + song.title).toLowerCase() : '';
+      // v50: говор – предаването по програмата на сайта (с обложката му); докато свири песен – тихо, веднъж в минута.
+      var maybeTalk = !song || isStationTitle(song) || !String(song.artist || '').trim() || coverFix(song.artist, song.title) !== undefined;
+      return (maybeTalk ? getSiteShow() : (getSiteShow(), Promise.resolve(siteShow))).then(function (sh) {
+      var talk = !song || isStationTitle(song) || isShowName(song, sh);
+      var showSong = talk && sh ? { title: sh.title, artist: sh.hosts || STATION, show: true } : null;
+      if (talk) song = null;
+      var key = song ? (song.artist + '|' + song.title).toLowerCase() : showSong ? ('show|' + showSong.title + '|' + sh.art).toLowerCase() : '';
       if (key === lastKey) return;
       lastKey = key;
       curSong = song;
@@ -1224,6 +1294,7 @@ window.AlmaMosaic = (function () {
       $('main').classList.remove('dim');
       if (logoLight) { logoLight = false; if ($('art').classList.contains('logo')) $('art').src = LOGO; }
       flashStation(!!song);
+      if (showSong) { show(showSong, sh.art, false); return; } // v50: предаването – с обложката му
       show(song, null, !!song);
       if (song) (function tryArt(left) {
         findArtwork(song.artist, song.title).then(function (art) {
@@ -1233,6 +1304,7 @@ window.AlmaMosaic = (function () {
           show(song, art || null, false); // с обложка – или размитото лого, ако няма
         });
       })(3);
+      });
     }).catch(function () { /* няма връзка – опитваме пак след малко */ });
   }
 
